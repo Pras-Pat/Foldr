@@ -20,6 +20,7 @@ interface SidebarProps {
   isPersisted: boolean;
   onExportBackup: () => void;
   onImportBackup: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRequestHarden: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -34,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isPersisted,
   onExportBackup,
   onImportBackup,
+  onRequestHarden,
 }) => {
   // Drag states local to sidebar item
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -275,18 +277,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="px-3.5 py-3 bg-[#F9F9F8] border-t border-[#EBEBEB] flex flex-col gap-2 shrink-0 select-none" id="sidebar-storage-section">
         <div className="flex items-center justify-between text-[9.5px] font-bold text-gray-400 uppercase tracking-widest" id="storage-status-header">
           <span>Storage State</span>
-          <span
+          <button
+            type="button"
+            onClick={onRequestHarden}
             id="storage-durability-pill"
-            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full select-none ${
+            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full select-none transition-all cursor-pointer hover:scale-105 active:scale-95 duration-150 focus:outline-none ${
               isPersisted
                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/40'
-                : 'bg-amber-50 text-amber-600 border border-amber-200/40'
+                : 'bg-amber-50 text-amber-100/10 border border-amber-400 bg-amber-500 text-amber-950 animate-pulse'
             }`}
-            title={isPersisted ? "Hardened: Browser guarantees protection from automatic storage resets or disk clearing." : "Temporary: Browser cookies/private browsing settings may wipe local storage on exit. Back up regular copies!"}
+            title={isPersisted ? "Hardened: Browser guarantees protection from automatic storage resets or disk clearing." : "Temporary: Browser cookies/private browsing settings may wipe local storage on exit. Click here to secure and lock storage!"}
           >
             {isPersisted ? 'Hardened ✓' : 'Temporary ⚠'}
-          </span>
+          </button>
         </div>
+        {!isPersisted && (
+          <button
+            type="button"
+            onClick={onRequestHarden}
+            id="secure-storage-action-link"
+            className="text-[10px] text-left text-amber-700 hover:text-amber-800 font-bold underline transition-all focus:outline-none cursor-pointer mt-0.5"
+            title="Lock database storage from browser cleanup"
+          >
+            → Click to lock & harden storage
+          </button>
+        )}
         <div className="grid grid-cols-2 gap-1.5 text-center" id="storage-actions-grid">
           <button
             type="button"

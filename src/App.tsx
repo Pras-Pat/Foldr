@@ -139,6 +139,52 @@ export default function App() {
     e.target.value = '';
   };
 
+  const requestHardenedStorage = async () => {
+    if (typeof window === 'undefined' || !navigator.storage) {
+      showToast("Storage API is not supported in this browser.", "error");
+      return;
+    }
+    
+    try {
+      const alreadyPersisted = await navigator.storage.persisted();
+      if (alreadyPersisted) {
+        setIsPersisted(true);
+        showToast("Storage state is already fully Hardened!", "success");
+        return;
+      }
+
+      // Try initial query
+      const granted = await navigator.storage.persist();
+      if (granted) {
+        setIsPersisted(true);
+        showToast("Storage state upgraded to Hardened!", "success");
+        return;
+      }
+
+      // If denied, tell them about browser rules (such as notification auto-grant or bookmark rules)
+      if ('Notification' in window) {
+        showToast("Opening prompt: grant permission to auto-enable secure storage.", "info");
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const forceGranted = await navigator.storage.persist();
+          setIsPersisted(forceGranted);
+          if (forceGranted) {
+            showToast("Success! Storage state upgraded and Hardened.", "success");
+          } else {
+            showToast("Permission accepted! Please bookmark this tab to lock it.", "info");
+          }
+        } else {
+          showToast("Permission declined. To harden, please bookmark this tab manually.", "info");
+        }
+      } else {
+        showToast("To complete hardening, please bookmark this tab in your browser.", "info");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Could not request hardening automatically.", "error");
+    }
+  };
+
   // Helper: Cycle collection statuses Active -> Parked -> Done -> Active
   const cycleStatus = (status: StatusType): StatusType => {
     if (status === 'Active') return 'Parked';
@@ -419,6 +465,7 @@ export default function App() {
         isPersisted={isPersisted}
         onExportBackup={handleExportBackup}
         onImportBackup={handleImportBackup}
+        onRequestHarden={requestHardenedStorage}
       />
 
       {/* Flexible Right Main Content Viewport */}
