@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Star, Folder } from 'lucide-react';
+import { Star, Folder } from 'lucide-react';
 import { Collection, StatusType } from '../types';
 import { LucideIcon } from './LucideIcon';
 
@@ -214,8 +214,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </span>
       </div>
 
+      {/* Solid Black Top New Collection Button as requested */}
+      <div className="px-3 pt-3 pb-3 border-b border-[#EBEBEB]" id="sidebar-top-new-collection-container">
+        <button
+          type="button"
+          id="add-collection-top-btn"
+          onClick={onAddCollection}
+          className="w-full flex items-center justify-center py-2 px-3 bg-[#1A1A1C] hover:bg-black active:bg-gray-900 text-white rounded-lg text-[12.5px] font-semibold tracking-wide transition-all cursor-pointer focus:outline-none shadow-sm"
+        >
+          <span>+ New Collection</span>
+        </button>
+      </div>
+
       {/* Status Filter Component */}
-      <div className="px-3 pt-3 pb-2 flex flex-col gap-1 border-b border-[#EBEBEB]" id="status-filter-wrapper">
+      <div className="px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-[#EBEBEB]" id="status-filter-wrapper">
         <span id="status-filter-header" className="px-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
           Status Filters
         </span>
@@ -326,18 +338,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           </label>
         </div>
-      </div>
-
-      {/* Create New Collection Footer Action */}
-      <div className="p-3 border-t border-[#EBEBEB] bg-[#F7F7F5]" id="sidebar-creation-footer">
-        <button
-          id="add-collection-dash-btn"
-          onClick={onAddCollection}
-          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 border border-dashed border-gray-300 rounded-lg text-[12.5px] font-bold text-gray-500 hover:text-gray-800 hover:border-gray-500 hover:bg-gray-100 transition-all cursor-pointer"
-        >
-          <Plus size={13} />
-          <span>New Collection</span>
-        </button>
       </div>
     </div>
   );
