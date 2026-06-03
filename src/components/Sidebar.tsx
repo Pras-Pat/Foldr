@@ -192,7 +192,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       className="w-[210px] bg-[#F7F7F5] h-screen flex flex-col shrink-0 border-r border-[#E5E5E0] text-[13px] overflow-hidden"
     >
       {/* Brand Header */}
-      <div className="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-[#EBEBEB]" id="sidebar-brand-header">
+      <div className="h-13 px-4 flex items-center gap-2 border-b border-[#EBEBEB] shrink-0" id="sidebar-brand-header">
         {/* Custom Mini Folder Stack Logomark */}
         <div 
           id="foldr-logo-container"
@@ -215,7 +215,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Solid Black Top New Collection Button as requested */}
-      <div className="px-3 pt-3 pb-3 border-b border-[#EBEBEB]" id="sidebar-top-new-collection-container">
+      <div className="h-[68px] px-3 flex items-center border-b border-[#EBEBEB] shrink-0" id="sidebar-top-new-collection-container">
         <button
           type="button"
           id="add-collection-top-btn"
@@ -227,7 +227,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Status Filter Component */}
-      <div className="px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-[#EBEBEB]" id="status-filter-wrapper">
+      <div className="px-3 pt-2.5 pb-2 flex flex-col gap-1" id="status-filter-wrapper">
         <span id="status-filter-header" className="px-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
           Status Filters
         </span>
@@ -248,6 +248,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </div>
       </div>
+
+      <div className="mx-2 h-px bg-[#EBEBEB]" id="sidebar-divider-status-to-lists" />
 
       {/* Starred section and collections lists */}
       <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4" id="sidebar-lists-area">

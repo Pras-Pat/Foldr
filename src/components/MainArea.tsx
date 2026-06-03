@@ -576,7 +576,7 @@ export const MainArea: React.FC<MainAreaProps> = ({
               <div
                 id="collection-hero-header"
                 style={{ backgroundColor: `${collection.iconColor}0F` }} // 6% opacity background
-                className="px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-[#EBEBEB] transition-all"
+                className="h-[68px] px-6 flex items-center justify-between gap-4 border-b border-[#EBEBEB] transition-all shrink-0"
               >
                 <div className="flex items-center gap-3.5" id="header-metadata-section">
                   {/* 34x34px icon container (icon color at 15% opacity background) */}
