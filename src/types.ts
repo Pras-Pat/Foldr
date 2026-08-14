@@ -21,6 +21,7 @@ export interface Collection {
   iconColor: string; // hex color codes
   status: StatusType;
   starred: boolean;
+  parentId?: string | null; // null/undefined for root collections; points to root collection ID for 1-level subcollections
   createdAt: string; // ISO string
   lastOpenedAt: string; // ISO string
   tabs: Tab[];

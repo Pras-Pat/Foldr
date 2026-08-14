@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Star, Folder } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Star, ChevronRight, ChevronDown, Plus } from 'lucide-react';
 import { Collection, StatusType } from '../types';
 import { LucideIcon } from './LucideIcon';
 
@@ -15,6 +15,7 @@ interface SidebarProps {
   selectedStatus: 'All' | StatusType;
   setSelectedStatus: (status: 'All' | StatusType) => void;
   onAddCollection: () => void;
+  onAddSubcollection: (parentId: string) => void;
   onReorderCollections: (sourceId: string, targetId: string, position: 'before' | 'after') => void;
   onToggleStarCollection: (id: string) => void;
   isPersisted: boolean;
@@ -30,6 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedStatus,
   setSelectedStatus,
   onAddCollection,
+  onAddSubcollection,
   onReorderCollections,
   onToggleStarCollection,
   isPersisted,
@@ -41,18 +43,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<{ id: string; position: 'before' | 'after' } | null>(null);
 
-  // Filter collections by status
-  const filterByStatus = (cols: Collection[]) => {
-    if (selectedStatus === 'All') return cols;
-    return cols.filter((c) => c.status === selectedStatus);
+  // Expanded / collapsed state for parent collections (default to expanded)
+  const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
+
+  // If active collection is a subcollection, ensure its parent is expanded
+  useEffect(() => {
+    if (activeId) {
+      const activeCol = collections.find((c) => c.id === activeId);
+      if (activeCol && activeCol.parentId) {
+        setCollapsedMap((prev) => ({
+          ...prev,
+          [activeCol.parentId!]: false,
+        }));
+      }
+    }
+  }, [activeId, collections]);
+
+  const toggleExpand = (e: React.MouseEvent, parentId: string) => {
+    e.stopPropagation();
+    setCollapsedMap((prev) => ({
+      ...prev,
+      [parentId]: !prev[parentId],
+    }));
   };
-
-  // Get active subset
-  const filtered = filterByStatus(collections);
-
-  // Group into Starred and Non-Starred (while respecting status filter)
-  const starredCollections = filtered.filter((c) => c.starred);
-  const regularCollections = filtered.filter((c) => !c.starred);
 
   // Status dot color mapping
   const getStatusColor = (status: StatusType) => {
@@ -66,12 +79,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  // Separate root collections from subcollections
+  const rootCollections = collections.filter((c) => !c.parentId);
+
+  // Helper to get subcollections for a given parent
+  const getSubcollections = (parentId: string) => {
+    return collections.filter((c) => c.parentId === parentId);
+  };
+
+  // Filter root collection and its subcollections by status
+  const filterRootCollection = (rootCol: Collection) => {
+    const subs = getSubcollections(rootCol.id);
+    if (selectedStatus === 'All') {
+      return { include: true, subs };
+    }
+    const matchingSubs = subs.filter((s) => s.status === selectedStatus);
+    const rootMatches = rootCol.status === selectedStatus;
+    if (rootMatches || matchingSubs.length > 0) {
+      return { include: true, subs: matchingSubs };
+    }
+    return { include: false, subs: [] };
+  };
+
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
     setDraggedId(id);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id);
-    // Visual drag preview
     const target = e.currentTarget;
     target.style.opacity = '0.4';
   };
@@ -86,7 +120,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (draggedId === id) return;
     e.preventDefault();
     
-    // Determine if cursor is upper half or lower half of element height
     const rect = e.currentTarget.getBoundingClientRect();
     const relativeY = e.clientY - rect.top;
     const position: 'before' | 'after' = relativeY < rect.height / 2 ? 'before' : 'after';
@@ -107,84 +140,220 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setDropIndicator(null);
   };
 
-  // Sidebar Row Renderer
-  const renderRow = (col: Collection) => {
-    const isActive = activeId === col.id;
-    const isOver = dropIndicator?.id === col.id;
-    const isDragged = draggedId === col.id;
+  // Render Subcollection Row
+  const renderSubcollectionRow = (sub: Collection) => {
+    const isActive = activeId === sub.id;
+    const isOver = dropIndicator?.id === sub.id;
+    const isDragged = draggedId === sub.id;
 
     return (
       <div
-        key={col.id}
-        id={`sidebar-row-${col.id}`}
+        key={sub.id}
+        id={`sidebar-subrow-${sub.id}`}
         draggable
-        onDragStart={(e) => handleDragStart(e, col.id)}
+        onDragStart={(e) => handleDragStart(e, sub.id)}
         onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, col.id)}
+        onDragOver={(e) => handleDragOver(e, sub.id)}
         onDragLeave={handleDragLeave}
-        onDrop={(e) => handleDrop(e, col.id)}
-        onClick={() => setActiveId(col.id)}
-        className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer transition-all select-none ${
+        onDrop={(e) => handleDrop(e, sub.id)}
+        onClick={() => setActiveId(sub.id)}
+        className={`group relative flex items-center justify-between pl-2 pr-2 py-1 rounded-md cursor-pointer transition-all select-none text-[12px] ${
           isActive
-            ? 'bg-gray-200/60 font-semibold text-gray-900'
-            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            ? 'bg-gray-200/70 font-semibold text-gray-900 shadow-sm'
+            : 'text-gray-600 hover:bg-gray-100/90 hover:text-gray-900'
         } ${isDragged ? 'opacity-40' : ''}`}
       >
-        {/* Top Drop Indicator Line */}
+        {/* Drop Indicator */}
         {isOver && dropIndicator?.position === 'before' && (
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-400 rounded-full z-10 animate-pulse" id="drop-indicator-top" />
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-400 rounded-full z-10 animate-pulse" />
         )}
 
-        {/* Content of the Item */}
-        <div className="flex items-center gap-2 overflow-hidden flex-1" id="row-media-title-wrapper">
+        {/* Content */}
+        <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
           <span
-            id="row-icon-span"
-            style={{ color: col.iconColor }}
-            className="flex items-center justify-center shrink-0 w-4 h-4"
+            style={{ color: sub.iconColor }}
+            className="flex items-center justify-center shrink-0 w-3.5 h-3.5"
           >
-            <LucideIcon name={col.icon} size={14} />
+            <LucideIcon name={sub.icon} size={12.5} />
           </span>
-          <span className="truncate text-[12.5px] tracking-tight leading-normal py-0.5" id="row-collection-name">
-            {col.name}
+          <span className="truncate tracking-tight leading-normal" id={`subcol-name-${sub.id}`}>
+            {sub.name}
           </span>
         </div>
 
-        {/* Status Dot, Star & Badge Counts */}
-        <div className="flex items-center gap-1.5 shrink-0 ml-1.5" id="row-meta-indicators">
-          <span className="text-[11px] text-gray-400 group-hover:text-gray-500 font-medium" id="row-tab-counter">
-            {col.tabs.length}
+        {/* Meta */}
+        <div className="flex items-center gap-1 shrink-0 ml-1">
+          <span className="text-[10.5px] text-gray-400 group-hover:text-gray-500 font-medium">
+            {sub.tabs.length}
           </span>
           <span
-            id="row-status-dot"
             className="w-1.5 h-1.5 rounded-full"
-            style={{ backgroundColor: getStatusColor(col.status) }}
-            title={col.status}
+            style={{ backgroundColor: getStatusColor(sub.status) }}
+            title={sub.status}
           />
           <button
             type="button"
-            id={`toggle-star-btn-${col.id}`}
             onClick={(e) => {
               e.stopPropagation();
-              onToggleStarCollection(col.id);
+              onToggleStarCollection(sub.id);
             }}
-            className={`p-0.5 rounded-md transition-all hover:scale-110 cursor-pointer focus:outline-none flex items-center justify-center ${
-              col.starred
+            className={`p-0.5 rounded transition-all hover:scale-110 cursor-pointer focus:outline-none flex items-center justify-center ${
+              sub.starred
                 ? 'text-amber-400 hover:text-amber-500'
                 : 'text-gray-300 hover:text-amber-400 opacity-0 group-hover:opacity-100'
             }`}
-            title={col.starred ? "Remove from favorites" : "Add to favorites"}
+            title={sub.starred ? "Remove favorite" : "Star subcollection"}
           >
-            <Star size={11.5} className={col.starred ? 'fill-amber-400' : ''} />
+            <Star size={10.5} className={sub.starred ? 'fill-amber-400' : ''} />
           </button>
         </div>
 
-        {/* Bottom Drop Indicator Line */}
         {isOver && dropIndicator?.position === 'after' && (
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-400 rounded-full z-10 animate-pulse" id="drop-indicator-bottom" />
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-400 rounded-full z-10 animate-pulse" />
         )}
       </div>
     );
   };
+
+  // Render Root Collection with optional 1-layer deep subcollections
+  const renderRootCollectionItem = (rootCol: Collection, filteredSubs: Collection[]) => {
+    const isActive = activeId === rootCol.id;
+    const isOver = dropIndicator?.id === rootCol.id;
+    const isDragged = draggedId === rootCol.id;
+    const allSubs = getSubcollections(rootCol.id);
+    const hasSubs = allSubs.length > 0;
+    const isCollapsed = !!collapsedMap[rootCol.id];
+
+    return (
+      <div key={rootCol.id} className="space-y-0.5">
+        {/* Parent Collection Row */}
+        <div
+          id={`sidebar-row-${rootCol.id}`}
+          draggable
+          onDragStart={(e) => handleDragStart(e, rootCol.id)}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleDragOver(e, rootCol.id)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, rootCol.id)}
+          onClick={() => setActiveId(rootCol.id)}
+          className={`group relative flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-all select-none ${
+            isActive
+              ? 'bg-gray-200/60 font-semibold text-gray-900'
+              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          } ${isDragged ? 'opacity-40' : ''}`}
+        >
+          {/* Top Drop Indicator */}
+          {isOver && dropIndicator?.position === 'before' && (
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-400 rounded-full z-10 animate-pulse" id="drop-indicator-top" />
+          )}
+
+          {/* Left Icon + Expand Arrow + Title */}
+          <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0" id="row-media-title-wrapper">
+            {/* Expand / Collapse Chevron */}
+            {hasSubs ? (
+              <button
+                type="button"
+                onClick={(e) => toggleExpand(e, rootCol.id)}
+                className="p-0.5 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-200/60 transition-colors shrink-0"
+                title={isCollapsed ? "Expand subcollections" : "Collapse subcollections"}
+              >
+                {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+              </button>
+            ) : (
+              <span className="w-3.5 shrink-0" />
+            )}
+
+            <span
+              id="row-icon-span"
+              style={{ color: rootCol.iconColor }}
+              className="flex items-center justify-center shrink-0 w-4 h-4"
+            >
+              <LucideIcon name={rootCol.icon} size={14} />
+            </span>
+            <span className="truncate text-[12.5px] tracking-tight leading-normal py-0.5" id="row-collection-name">
+              {rootCol.name}
+            </span>
+          </div>
+
+          {/* Right Meta (Tab count, + Add Subcollection on hover, Status dot, Star) */}
+          <div className="flex items-center gap-1 shrink-0 ml-1.5" id="row-meta-indicators">
+            {/* Quick Add Subcollection Button on Hover */}
+            <button
+              type="button"
+              id={`add-subcol-quick-btn-${rootCol.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddSubcollection(rootCol.id);
+              }}
+              className="p-0.5 rounded text-gray-400 hover:text-gray-800 hover:bg-gray-200/70 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+              title="Add Subcollection"
+            >
+              <Plus size={12} />
+            </button>
+
+            <span className="text-[11px] text-gray-400 group-hover:text-gray-500 font-medium" id="row-tab-counter">
+              {rootCol.tabs.length}
+            </span>
+
+            <span
+              id="row-status-dot"
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: getStatusColor(rootCol.status) }}
+              title={rootCol.status}
+            />
+
+            <button
+              type="button"
+              id={`toggle-star-btn-${rootCol.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleStarCollection(rootCol.id);
+              }}
+              className={`p-0.5 rounded-md transition-all hover:scale-110 cursor-pointer focus:outline-none flex items-center justify-center ${
+                rootCol.starred
+                  ? 'text-amber-400 hover:text-amber-500'
+                  : 'text-gray-300 hover:text-amber-400 opacity-0 group-hover:opacity-100'
+              }`}
+              title={rootCol.starred ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Star size={11.5} className={rootCol.starred ? 'fill-amber-400' : ''} />
+            </button>
+          </div>
+
+          {/* Bottom Drop Indicator */}
+          {isOver && dropIndicator?.position === 'after' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-400 rounded-full z-10 animate-pulse" id="drop-indicator-bottom" />
+          )}
+        </div>
+
+        {/* 1-Layer Deep Subcollections Tree branch */}
+        {hasSubs && !isCollapsed && (
+          <div className="ml-3 pl-2 border-l border-gray-200/80 space-y-0.5 my-0.5" id={`subcollections-branch-${rootCol.id}`}>
+            {filteredSubs.map(renderSubcollectionRow)}
+            {filteredSubs.length === 0 && selectedStatus !== 'All' && (
+              <div className="pl-2 py-0.5 text-[10.5px] text-gray-400 italic">
+                No {selectedStatus.toLowerCase()} subcollections
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Group into Starred and Non-Starred root items
+  const processedRootItems = rootCollections.map((rootCol) => ({
+    rootCol,
+    filterResult: filterRootCollection(rootCol),
+  })).filter((item) => item.filterResult.include);
+
+  const starredItems = processedRootItems.filter(
+    (item) => item.rootCol.starred || item.filterResult.subs.some((s) => s.starred)
+  );
+
+  const regularItems = processedRootItems.filter(
+    (item) => !item.rootCol.starred && !item.filterResult.subs.some((s) => s.starred)
+  );
 
   return (
     <div
@@ -260,8 +429,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Starred</span>
           </div>
           <div className="space-y-0.5" id="starred-rows-list">
-            {starredCollections.map(renderRow)}
-            {starredCollections.length === 0 && (
+            {starredItems.map((item) => renderRootCollectionItem(item.rootCol, item.filterResult.subs))}
+            {starredItems.length === 0 && (
               <div className="px-2.5 py-2 text-[11px] text-gray-400 italic" id="no-starred-placeholder">
                 No starred collections
               </div>
@@ -277,8 +446,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             Collections
           </span>
           <div className="space-y-0.5" id="regular-rows-list">
-            {regularCollections.map(renderRow)}
-            {regularCollections.length === 0 && (
+            {regularItems.map((item) => renderRootCollectionItem(item.rootCol, item.filterResult.subs))}
+            {regularItems.length === 0 && (
               <div className="px-2.5 py-2 text-[11px] text-gray-400 italic" id="no-regular-placeholder">
                 No other collections
               </div>

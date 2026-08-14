@@ -11,6 +11,8 @@ import { LucideIcon, ALL_ICONS_LIST } from './LucideIcon';
 interface CollectionModalProps {
   isOpen: boolean;
   collection: Collection | null; // null for Create Mode
+  allCollections: Collection[];
+  defaultParentId?: string | null;
   onClose: () => void;
   onSave: (data: {
     name: string;
@@ -18,6 +20,7 @@ interface CollectionModalProps {
     iconColor: string;
     status: StatusType;
     starred: boolean;
+    parentId?: string | null;
   }) => void;
 }
 
@@ -55,12 +58,15 @@ const rgbToHex = (r: number, g: number, b: number) => {
 export const CollectionModal: React.FC<CollectionModalProps> = ({
   isOpen,
   collection,
+  allCollections,
+  defaultParentId = null,
   onClose,
   onSave,
 }) => {
   const [name, setName] = useState('');
   const [status, setStatus] = useState<StatusType>('Active');
   const [starred, setStarred] = useState(false);
+  const [parentId, setParentId] = useState<string | null>(null);
   const [selectedIcon, setSelectedIcon] = useState('folder');
   const [iconColor, setIconColor] = useState('#5B5BD6');
   
@@ -70,6 +76,17 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
   // RGB states
   const [rgb, setRgb] = useState({ r: 91, g: 91, b: 148 });
 
+  // Only top-level root collections (c.parentId == null) can be parents
+  // Also cannot pick self as parent
+  const rootCollections = allCollections.filter(
+    (c) => (!c.parentId || c.parentId === null) && (!collection || c.id !== collection.id)
+  );
+
+  // If this existing collection already has children, it CANNOT become a subcollection (strictly 1 layer deep)
+  const isParentWithChildren = collection
+    ? allCollections.some((c) => c.parentId === collection.id)
+    : false;
+
   // Load collection details when modal opens / matches collection
   useEffect(() => {
     if (isOpen) {
@@ -77,6 +94,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
         setName(collection.name);
         setStatus(collection.status);
         setStarred(collection.starred);
+        setParentId(collection.parentId || null);
         setSelectedIcon(collection.icon);
         const color = collection.iconColor || '#5B5BD6';
         setIconColor(color);
@@ -86,14 +104,15 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
         setName('');
         setStatus('Active');
         setStarred(false);
-        setSelectedIcon('bookmark');
+        setParentId(defaultParentId || null);
+        setSelectedIcon(defaultParentId ? 'folder' : 'bookmark');
         const defaultColor = '#5B5BD6';
         setIconColor(defaultColor);
         setRgb(hexToRgb(defaultColor));
       }
       setIconSearch('');
     }
-  }, [isOpen, collection]);
+  }, [isOpen, collection, defaultParentId]);
 
   // Sync color adjustments
   const handleColorSwatchClick = (hex: string) => {
@@ -145,6 +164,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
       iconColor: finalColor,
       status,
       starred,
+      parentId: isParentWithChildren ? null : parentId,
     });
   };
 
@@ -158,7 +178,13 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#EBEBEB]" id="modal-header">
           <h2 className="font-bold text-gray-900 text-[14px]">
-            {collection ? 'Edit Collection' : 'Create New Collection'}
+            {collection
+              ? collection.parentId
+                ? 'Edit Subcollection'
+                : 'Edit Collection'
+              : parentId
+              ? 'Create New Subcollection'
+              : 'Create New Collection'}
           </h2>
           <button 
             id="close-modal-btn"
@@ -175,7 +201,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
           {/* Collection Name Input */}
           <div className="space-y-1" id="name-field-group">
             <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">
-              Collection Name
+              {parentId ? 'Subcollection Name' : 'Collection Name'}
             </label>
             <input
               id="collection-name-input"
@@ -184,9 +210,42 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Development Tools"
+              placeholder={parentId ? "e.g., Frontend Frameworks" : "e.g., Development Tools"}
               className="w-full px-3 py-1.5 bg-gray-50 border border-[#EBEBEB] rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white text-[13px] transition-all"
             />
+          </div>
+
+          {/* Location / Hierarchy Selector (Strictly 1 layer deep) */}
+          <div className="space-y-1" id="parent-hierarchy-group">
+            <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+              Hierarchy Location
+            </label>
+            {isParentWithChildren ? (
+              <div className="px-3 py-1.5 bg-gray-50 border border-[#EBEBEB] rounded-lg text-[12px] text-gray-500 font-medium">
+                Top-Level Collection (Contains subcollections)
+              </div>
+            ) : (
+              <select
+                id="collection-parent-select"
+                value={parentId || ''}
+                onChange={(e) => setParentId(e.target.value ? e.target.value : null)}
+                className="w-full px-3 py-1.5 bg-gray-50 border border-[#EBEBEB] rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white text-[12.5px] transition-all font-medium text-gray-800"
+              >
+                <option value="">Top-Level Collection (Root)</option>
+                {rootCollections.length > 0 && (
+                  <optgroup label="Subcollection of:">
+                    {rootCollections.map((rootCol) => (
+                      <option key={rootCol.id} value={rootCol.id}>
+                        {rootCol.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            )}
+            <p className="text-[10px] text-gray-400 font-medium mt-0.5">
+              {parentId ? 'Subfolders are kept strictly 1-layer deep.' : 'Can contain its own bookmarks and subcollections.'}
+            </p>
           </div>
 
           {/* Status & Star Row */}

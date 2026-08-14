@@ -25,6 +25,7 @@ export default function App() {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
+  const [defaultParentId, setDefaultParentId] = useState<string | null>(null);
   const [colToDeleteId, setColToDeleteId] = useState<string | null>(null);
 
   // Helper to show custom micro-toasts instead of window.alert
@@ -389,9 +390,13 @@ export default function App() {
   const handleConfirmDeleteCollection = () => {
     if (!colToDeleteId) return;
     updateCollections((prev) => {
-      const remaining = prev.filter((col) => col.id !== colToDeleteId);
+      // Delete target collection AND any of its subcollections (cascade delete)
+      const remaining = prev.filter((col) => col.id !== colToDeleteId && col.parentId !== colToDeleteId);
       // Switch active collection
-      if (activeCollectionId === colToDeleteId) {
+      if (
+        activeCollectionId === colToDeleteId ||
+        prev.find((c) => c.id === activeCollectionId)?.parentId === colToDeleteId
+      ) {
         setActiveCollectionId(remaining.length > 0 ? remaining[0].id : null);
       }
       return remaining;
@@ -407,6 +412,7 @@ export default function App() {
     iconColor: string;
     status: StatusType;
     starred: boolean;
+    parentId?: string | null;
   }) => {
     if (editingCollection) {
       // Edit Mode
@@ -416,6 +422,7 @@ export default function App() {
             return {
               ...col,
               ...data,
+              parentId: data.parentId ?? null,
               lastOpenedAt: new Date().toISOString(),
             };
           }
@@ -433,6 +440,7 @@ export default function App() {
         iconColor: data.iconColor,
         status: data.status,
         starred: data.starred,
+        parentId: data.parentId ?? null,
         createdAt: new Date().toISOString(),
         lastOpenedAt: new Date().toISOString(),
         tabs: [],
@@ -440,11 +448,18 @@ export default function App() {
       
       updateCollections((prev) => [...prev, newCol]);
       setActiveCollectionId(newColId);
-      showToast("Created new collection!", "success");
+      showToast(data.parentId ? "Created subcollection!" : "Created new collection!", "success");
     }
 
     setIsModalOpen(false);
     setEditingCollection(null);
+    setDefaultParentId(null);
+  };
+
+  const handleAddSubcollection = (parentId: string) => {
+    setEditingCollection(null);
+    setDefaultParentId(parentId);
+    setIsModalOpen(true);
   };
 
   return (
@@ -458,8 +473,10 @@ export default function App() {
         setSelectedStatus={setSelectedStatus}
         onAddCollection={() => {
           setEditingCollection(null);
+          setDefaultParentId(null);
           setIsModalOpen(true);
         }}
+        onAddSubcollection={handleAddSubcollection}
         onReorderCollections={handleReorderCollections}
         onToggleStarCollection={handleToggleStarCollection}
         isPersisted={isPersisted}
@@ -475,6 +492,7 @@ export default function App() {
         onCycleStatus={handleCycleCollectionStatus}
         onEditCollection={handleEditCollectionClick}
         onDeleteCollection={handleDeleteCollection}
+        onAddSubcollection={handleAddSubcollection}
         onAddTabs={handleAddTabs}
         onDeleteTab={handleDeleteTab}
         onDeleteMultipleTabs={handleDeleteMultipleTabs}
@@ -486,9 +504,12 @@ export default function App() {
       <CollectionModal
         isOpen={isModalOpen}
         collection={editingCollection}
+        allCollections={collections}
+        defaultParentId={defaultParentId}
         onClose={() => {
           setIsModalOpen(false);
           setEditingCollection(null);
+          setDefaultParentId(null);
         }}
         onSave={handleSaveCollectionModal}
       />
@@ -499,17 +520,43 @@ export default function App() {
         title="Delete Collection?"
         severity="danger"
         message={
-          <span>
-            Are you sure you want to delete{' '}
-            <strong className="text-gray-900 font-extrabold">
-              &ldquo;{collections.find((c) => c.id === colToDeleteId)?.name || 'this collection'}&rdquo;
-            </strong>{' '}
-            and all of its{' '}
-            <strong className="text-gray-900 font-extrabold">
-              {collections.find((c) => c.id === colToDeleteId)?.tabs.length || 0}
-            </strong>{' '}
-            saved bookmark(s)? This action cannot be undone.
-          </span>
+          (() => {
+            const targetCol = collections.find((c) => c.id === colToDeleteId);
+            const subcollections = collections.filter((c) => c.parentId === colToDeleteId);
+            const hasSubs = subcollections.length > 0;
+            const totalSubTabs = subcollections.reduce((sum, s) => sum + s.tabs.length, 0);
+
+            return (
+              <span>
+                Are you sure you want to delete{' '}
+                <strong className="text-gray-900 font-extrabold">
+                  &ldquo;{targetCol?.name || 'this collection'}&rdquo;
+                </strong>
+                {hasSubs ? (
+                  <>
+                    , along with its{' '}
+                    <strong className="text-gray-900 font-extrabold">
+                      {subcollections.length} subcollection(s)
+                    </strong>{' '}
+                    and{' '}
+                    <strong className="text-gray-900 font-extrabold">
+                      {(targetCol?.tabs.length || 0) + totalSubTabs} total bookmark(s)
+                    </strong>
+                    ?
+                  </>
+                ) : (
+                  <>
+                    {' '}and all of its{' '}
+                    <strong className="text-gray-900 font-extrabold">
+                      {targetCol?.tabs.length || 0}
+                    </strong>{' '}
+                    saved bookmark(s)?
+                  </>
+                )}{' '}
+                This action cannot be undone.
+              </span>
+            );
+          })()
         }
         confirmText="Delete Collection"
         cancelText="Cancel"

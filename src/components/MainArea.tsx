@@ -16,6 +16,7 @@ interface MainAreaProps {
   onCycleStatus: (collectionId: string) => void;
   onEditCollection: (collectionId: string) => void;
   onDeleteCollection: (collectionId: string) => void;
+  onAddSubcollection?: (parentId: string) => void;
   onAddTabs: (collectionId: string, urlsStr: string) => void;
   onDeleteTab: (collectionId: string, tabId: string) => void;
   onDeleteMultipleTabs: (collectionId: string, tabIds: string[]) => void;
@@ -29,6 +30,7 @@ export const MainArea: React.FC<MainAreaProps> = ({
   onCycleStatus,
   onEditCollection,
   onDeleteCollection,
+  onAddSubcollection,
   onAddTabs,
   onDeleteTab,
   onDeleteMultipleTabs,
@@ -507,19 +509,27 @@ export const MainArea: React.FC<MainAreaProps> = ({
                   {/* Actions & collection badge link */}
                   <div className="flex items-center gap-3 shrink-0 ml-4 font-medium" id={`search-tab-triggers-${tab.id}`}>
                     {/* Collection link badge */}
-                    <button
-                      id={`search-parent-badge-btn-${tab.id}`}
-                      onClick={() => navigateToCollectionFromSearch(parentCol.id)}
-                      style={{
-                        backgroundColor: `${parentCol.iconColor}1a`,
-                        color: parentCol.iconColor,
-                      }}
-                      className="px-2 py-0.5 rounded text-[10.5px] font-bold transition-all hover:scale-105 flex items-center gap-1 cursor-pointer"
-                      title={`Go to collection: ${parentCol.name}`}
-                    >
-                      <LucideIcon name={parentCol.icon} size={10} />
-                      <span>{parentCol.name}</span>
-                    </button>
+                    {(() => {
+                      const rootParent = parentCol.parentId ? allCollections.find(c => c.id === parentCol.parentId) : null;
+                      return (
+                        <button
+                          id={`search-parent-badge-btn-${tab.id}`}
+                          onClick={() => navigateToCollectionFromSearch(parentCol.id)}
+                          style={{
+                            backgroundColor: `${parentCol.iconColor}1a`,
+                            color: parentCol.iconColor,
+                          }}
+                          className="px-2 py-0.5 rounded text-[10.5px] font-bold transition-all hover:scale-105 flex items-center gap-1 cursor-pointer"
+                          title={`Go to collection: ${rootParent ? rootParent.name + ' › ' : ''}${parentCol.name}`}
+                        >
+                          <LucideIcon name={parentCol.icon} size={10} />
+                          <span>
+                            {rootParent && <span className="opacity-70 mr-0.5">{rootParent.name} ›</span>}
+                            {parentCol.name}
+                          </span>
+                        </button>
+                      );
+                    })()}
 
                     {/* Timestamp added */}
                     <span className="text-[11px] text-gray-400 group-hover:hidden select-none">
@@ -592,6 +602,28 @@ export const MainArea: React.FC<MainAreaProps> = ({
                   </div>
 
                   <div>
+                    {/* Subcollection Breadcrumbs */}
+                    {(() => {
+                      if (!collection.parentId) return null;
+                      const parentCol = allCollections.find((c) => c.id === collection.parentId);
+                      if (!parentCol) return null;
+                      return (
+                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium mb-0.5 leading-none" id="header-breadcrumb">
+                          <button
+                            type="button"
+                            onClick={() => onSelectCollection(parentCol.id)}
+                            className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors cursor-pointer hover:underline"
+                            title={`Back to parent collection: ${parentCol.name}`}
+                          >
+                            <LucideIcon name={parentCol.icon} size={11} style={{ color: parentCol.iconColor }} />
+                            <span>{parentCol.name}</span>
+                          </button>
+                          <span className="text-gray-400 font-semibold">/</span>
+                          <span className="font-semibold text-gray-800">{collection.name}</span>
+                        </div>
+                      );
+                    })()}
+
                     <div className="flex items-center gap-2" id="header-title-pill-wrapper">
                       <h1 className="font-extrabold text-[15px] text-gray-900 leading-tight" id="header-collection-name">
                         {collection.name}
@@ -610,6 +642,12 @@ export const MainArea: React.FC<MainAreaProps> = ({
                       >
                         {collection.status}
                       </button>
+
+                      {collection.parentId && (
+                        <span className="px-2 py-0.5 rounded-full text-[9.5px] font-bold bg-gray-200/80 text-gray-600 border border-gray-300/40">
+                          Subcollection
+                        </span>
+                      )}
                     </div>
                     
                     <p className="text-[11px] text-gray-400 font-medium mt-0.5" id="header-last-opened-label">
@@ -704,6 +742,94 @@ export const MainArea: React.FC<MainAreaProps> = ({
                     <button id="close-toast-btn" onClick={() => setInfoToast(null)} className="text-gray-400 hover:text-gray-600 text-xs font-bold leading-none py-0.5 px-1.5 cursor-pointer">
                       ×
                     </button>
+                  </div>
+                )}
+
+                {/* Subcollections Section for root collections */}
+                {!collection.parentId && (
+                  <div className="p-6 pb-0" id="subcollections-section">
+                    {(() => {
+                      const subcollections = allCollections.filter((c) => c.parentId === collection.id);
+                      return (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-gray-100" id="subcollections-section-header">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider block select-none">
+                                Subcollections ({subcollections.length})
+                              </span>
+                            </div>
+                            {onAddSubcollection && (
+                              <button
+                                type="button"
+                                id="add-subcollection-header-btn"
+                                onClick={() => onAddSubcollection(collection.id)}
+                                className="flex items-center gap-1 text-[11px] font-bold text-gray-600 hover:text-gray-900 bg-gray-100/90 hover:bg-gray-200/80 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.02)]"
+                              >
+                                <Plus size={11} />
+                                <span>New Subcollection</span>
+                              </button>
+                            )}
+                          </div>
+
+                          {subcollections.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5" id="subcollections-grid">
+                              {subcollections.map((sub) => {
+                                const subStatusColor = sub.status === 'Active' ? '#22C55E' : sub.status === 'Parked' ? '#F59E0B' : '#9CA3AF';
+                                return (
+                                  <div
+                                    key={sub.id}
+                                    id={`subcollection-card-${sub.id}`}
+                                    onClick={() => onSelectCollection(sub.id)}
+                                    className="group p-3 rounded-xl border border-[#EBEBEB] hover:border-gray-300 bg-white hover:bg-gray-50/50 shadow-sm transition-all cursor-pointer flex items-center justify-between gap-2"
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div
+                                        style={{
+                                          backgroundColor: `${sub.iconColor}1a`,
+                                          color: sub.iconColor,
+                                        }}
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border border-black/5"
+                                      >
+                                        <LucideIcon name={sub.icon} size={14} />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h4 className="text-[12.5px] font-bold text-gray-900 truncate leading-tight group-hover:text-black">
+                                          {sub.name}
+                                        </h4>
+                                        <span className="text-[10.5px] text-gray-400 font-medium">
+                                          {sub.tabs.length} {sub.tabs.length === 1 ? 'bookmark' : 'bookmarks'}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span
+                                        className="w-1.5 h-1.5 rounded-full"
+                                        style={{ backgroundColor: subStatusColor }}
+                                        title={sub.status}
+                                      />
+                                      <ArrowUpRight size={13} className="text-gray-300 group-hover:text-gray-600 transition-colors" />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div
+                              id="no-subcollections-prompt"
+                              onClick={() => onAddSubcollection && onAddSubcollection(collection.id)}
+                              className="p-3 border border-dashed border-gray-200 hover:border-gray-300 rounded-xl bg-gray-50/40 hover:bg-gray-50 flex items-center justify-between text-xs text-gray-500 cursor-pointer transition-all"
+                            >
+                              <span className="text-gray-400 text-[11.5px]">No subcollections in this folder yet.</span>
+                              <span className="font-bold text-gray-700 hover:underline flex items-center gap-1 text-[11.5px]">
+                                <Plus size={12} />
+                                <span>Create subcollection</span>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
