@@ -817,14 +817,9 @@ export const MainArea: React.FC<MainAreaProps> = ({
                           ) : (
                             <div
                               id="no-subcollections-prompt"
-                              onClick={() => onAddSubcollection && onAddSubcollection(collection.id)}
-                              className="p-3 border border-dashed border-gray-200 hover:border-gray-300 rounded-xl bg-gray-50/40 hover:bg-gray-50 flex items-center justify-between text-xs text-gray-500 cursor-pointer transition-all"
+                              className="p-3 border border-dashed border-gray-200 rounded-xl bg-gray-50/40 flex items-center text-xs text-gray-500"
                             >
                               <span className="text-gray-400 text-[11.5px]">No subcollections in this folder yet.</span>
-                              <span className="font-bold text-gray-700 hover:underline flex items-center gap-1 text-[11.5px]">
-                                <Plus size={12} />
-                                <span>Create subcollection</span>
-                              </span>
                             </div>
                           )}
                         </div>

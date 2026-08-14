@@ -17,6 +17,7 @@ interface SidebarProps {
   onAddCollection: () => void;
   onAddSubcollection: (parentId: string) => void;
   onReorderCollections: (sourceId: string, targetId: string, position: 'before' | 'after') => void;
+  onMoveCollectionToParent?: (sourceId: string, targetParentId: string | null) => void;
   onToggleStarCollection: (id: string) => void;
   isPersisted: boolean;
   onExportBackup: () => void;
@@ -33,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onAddCollection,
   onAddSubcollection,
   onReorderCollections,
+  onMoveCollectionToParent,
   onToggleStarCollection,
   isPersisted,
   onExportBackup,
@@ -41,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   // Drag states local to sidebar item
   const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<{ id: string; position: 'before' | 'after' } | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ id: string; position: 'before' | 'after' | 'inside' } | null>(null);
 
   // Expanded / collapsed state for parent collections (default to expanded)
   const [collapsedMap, setCollapsedMap] = useState<Record<string, boolean>>({});
@@ -116,28 +118,87 @@ export const Sidebar: React.FC<SidebarProps> = ({
     e.currentTarget.style.opacity = '1';
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, id: string) => {
-    if (draggedId === id) return;
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, targetId: string, isRootTarget: boolean) => {
+    if (!draggedId || draggedId === targetId) return;
     e.preventDefault();
+    e.stopPropagation();
     
     const rect = e.currentTarget.getBoundingClientRect();
     const relativeY = e.clientY - rect.top;
-    const position: 'before' | 'after' = relativeY < rect.height / 2 ? 'before' : 'after';
+    const height = rect.height;
 
-    setDropIndicator({ id, position });
+    // Check dragged item properties
+    const draggedCol = collections.find((c) => c.id === draggedId);
+    const hasChildren = collections.some((c) => c.parentId === draggedId);
+    
+    // Only root collections without children can be dragged INTO a root collection
+    // (If the dragged item is already a subcollection, dragging directly into another root can move it into that root)
+    const canNestInside = isRootTarget && !hasChildren;
+
+    let position: 'before' | 'after' | 'inside';
+    if (canNestInside) {
+      // 3 zones: top 25% = before, middle 50% = inside, bottom 25% = after
+      if (relativeY < height * 0.25) {
+        position = 'before';
+      } else if (relativeY > height * 0.75) {
+        position = 'after';
+      } else {
+        position = 'inside';
+      }
+    } else {
+      // Standard reordering (before / after)
+      position = relativeY < height * 0.5 ? 'before' : 'after';
+    }
+
+    setDropIndicator({ id: targetId, position });
   };
 
-  const handleDragLeave = () => {
-    setDropIndicator(null);
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    // Only clear if leaving to an element outside the current target
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDropIndicator(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetId: string) => {
     e.preventDefault();
-    const sourceId = e.dataTransfer.getData('text/plain');
+    e.stopPropagation();
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedId;
     if (sourceId && sourceId !== targetId && dropIndicator) {
-      onReorderCollections(sourceId, targetId, dropIndicator.position);
+      if (dropIndicator.position === 'inside') {
+        if (onMoveCollectionToParent) {
+          onMoveCollectionToParent(sourceId, targetId);
+          // Auto-expand target collection so the newly nested item is visible
+          setCollapsedMap((prev) => ({
+            ...prev,
+            [targetId]: false,
+          }));
+        }
+      } else {
+        onReorderCollections(sourceId, targetId, dropIndicator.position);
+      }
     }
     setDropIndicator(null);
+    setDraggedId(null);
+  };
+
+  // Handler when dropping in the empty list container (promotes subcollection to root at the end of the list)
+  const handleEmptyListDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggedId) return;
+    e.preventDefault();
+  };
+
+  const handleEmptyListDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedId;
+    if (sourceId) {
+      const sourceCol = collections.find((c) => c.id === sourceId);
+      if (sourceCol && sourceCol.parentId && onMoveCollectionToParent) {
+        onMoveCollectionToParent(sourceId, null);
+      }
+    }
+    setDropIndicator(null);
+    setDraggedId(null);
   };
 
   // Render Subcollection Row
@@ -153,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         draggable
         onDragStart={(e) => handleDragStart(e, sub.id)}
         onDragEnd={handleDragEnd}
-        onDragOver={(e) => handleDragOver(e, sub.id)}
+        onDragOver={(e) => handleDragOver(e, sub.id, false)}
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, sub.id)}
         onClick={() => setActiveId(sub.id)}
@@ -223,6 +284,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const allSubs = getSubcollections(rootCol.id);
     const hasSubs = allSubs.length > 0;
     const isCollapsed = !!collapsedMap[rootCol.id];
+    const isDropInside = isOver && dropIndicator?.position === 'inside';
 
     return (
       <div key={rootCol.id} className="space-y-0.5">
@@ -232,17 +294,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           draggable
           onDragStart={(e) => handleDragStart(e, rootCol.id)}
           onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(e, rootCol.id)}
+          onDragOver={(e) => handleDragOver(e, rootCol.id, true)}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, rootCol.id)}
           onClick={() => setActiveId(rootCol.id)}
           className={`group relative flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-all select-none ${
-            isActive
+            isDropInside
+              ? 'bg-blue-50/90 text-blue-900 ring-2 ring-blue-500/60 ring-inset shadow-sm'
+              : isActive
               ? 'bg-gray-200/60 font-semibold text-gray-900'
               : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
           } ${isDragged ? 'opacity-40' : ''}`}
         >
-          {/* Top Drop Indicator */}
+          {/* Top Drop Indicator (for reordering above) */}
           {isOver && dropIndicator?.position === 'before' && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-400 rounded-full z-10 animate-pulse" id="drop-indicator-top" />
           )}
@@ -421,7 +485,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="mx-2 h-px bg-[#EBEBEB]" id="sidebar-divider-status-to-lists" />
 
       {/* Starred section and collections lists */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4" id="sidebar-lists-area">
+      <div
+        className="flex-1 overflow-y-auto px-2 py-3 space-y-4"
+        id="sidebar-lists-area"
+        onDragOver={handleEmptyListDragOver}
+        onDrop={handleEmptyListDrop}
+      >
         {/* Starred Section */}
         <div className="space-y-1" id="starred-collections-section">
           <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">

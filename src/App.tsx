@@ -353,26 +353,90 @@ export default function App() {
     );
   };
 
-  // Drag and drop collections in sidebar to reorder
+  // Make a collection into a subcollection of targetParentId (or detach to root if targetParentId is null)
+  const handleMoveCollectionToParent = (sourceId: string, targetParentId: string | null) => {
+    if (sourceId === targetParentId) return;
+
+    // Check if source has children - strictly 1 layer deep:
+    const sourceHasChildren = collections.some((c) => c.parentId === sourceId);
+    if (sourceHasChildren && targetParentId !== null) {
+      showToast("Cannot nest a collection that already contains subcollections.", "error");
+      return;
+    }
+
+    // Check if target is already a subcollection - cannot nest into a subcollection (1 layer deep)
+    if (targetParentId !== null) {
+      const targetCol = collections.find((c) => c.id === targetParentId);
+      if (targetCol && targetCol.parentId) {
+        showToast("Cannot nest inside a subcollection (strictly 1-layer deep).", "error");
+        return;
+      }
+    }
+
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === sourceId) {
+          return {
+            ...col,
+            parentId: targetParentId,
+            lastOpenedAt: new Date().toISOString(),
+          };
+        }
+        return col;
+      })
+    );
+
+    const sourceCol = collections.find((c) => c.id === sourceId);
+    const parentCol = targetParentId ? collections.find((c) => c.id === targetParentId) : null;
+    if (parentCol && sourceCol) {
+      showToast(`Moved "${sourceCol.name}" into "${parentCol.name}" as a subcollection.`, "success");
+    }
+  };
+
+  // Drag and drop collections in sidebar to reorder or promote subcollection to root
   const handleReorderCollections = (
     sourceId: string,
     targetId: string,
     position: 'before' | 'after'
   ) => {
     updateCollections((prev) => {
-      const indexSource = prev.findIndex((c) => c.id === sourceId);
-      const indexTarget = prev.findIndex((c) => c.id === targetId);
-      if (indexSource === -1 || indexTarget === -1) return prev;
+      const sourceCol = prev.find((c) => c.id === sourceId);
+      const targetCol = prev.find((c) => c.id === targetId);
+      if (!sourceCol || !targetCol) return prev;
 
+      // Determine next parentId:
+      // If target is root (parentId is null/undefined), dragging before/after makes source into a root collection as well.
+      // If target is a subcollection (parentId !== null), source becomes a subcollection under that same parent.
+      let newParentId = targetCol.parentId ?? null;
+
+      // Single-layer rule validation: if source has subcollections of its own, it cannot become a subcollection under any parent
+      const sourceHasChildren = prev.some((c) => c.parentId === sourceId);
+      if (sourceHasChildren && newParentId !== null) {
+        newParentId = null;
+      }
+
+      const indexSource = prev.findIndex((c) => c.id === sourceId);
       const remainingCols = [...prev];
       const [draggedCol] = remainingCols.splice(indexSource, 1);
+
+      const updatedDraggedCol = {
+        ...draggedCol,
+        parentId: newParentId,
+        lastOpenedAt: new Date().toISOString(),
+      };
 
       const nextTargetIndex = remainingCols.findIndex((c) => c.id === targetId);
       const insertIndex = position === 'before' ? nextTargetIndex : nextTargetIndex + 1;
 
-      remainingCols.splice(insertIndex, 0, draggedCol);
+      remainingCols.splice(insertIndex, 0, updatedDraggedCol);
       return remainingCols;
     });
+
+    const sourceCol = collections.find((c) => c.id === sourceId);
+    const targetCol = collections.find((c) => c.id === targetId);
+    if (sourceCol && sourceCol.parentId && targetCol && !targetCol.parentId) {
+      showToast(`Promoted "${sourceCol.name}" to top-level collection.`, "success");
+    }
   };
 
   const handleToggleStarCollection = (collectionId: string) => {
@@ -478,6 +542,7 @@ export default function App() {
         }}
         onAddSubcollection={handleAddSubcollection}
         onReorderCollections={handleReorderCollections}
+        onMoveCollectionToParent={handleMoveCollectionToParent}
         onToggleStarCollection={handleToggleStarCollection}
         isPersisted={isPersisted}
         onExportBackup={handleExportBackup}
