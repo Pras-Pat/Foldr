@@ -4,12 +4,14 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Plus, Trash2, Edit, FolderOpen, ArrowUpRight, Play, Info, Keyboard, X } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, FolderOpen, ArrowUpRight, Play, Info, Keyboard, X, Edit2, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Collection, Tab, StatusType } from '../types';
 import { LucideIcon } from './LucideIcon';
 import { ConfirmationModal } from './ConfirmationModal';
 import { CollectionNotes } from './CollectionNotes';
+import { TabEditModal } from './TabEditModal';
+import { TabFavicon } from './TabFavicon';
 
 interface MainAreaProps {
   collection: Collection | null;
@@ -24,6 +26,9 @@ interface MainAreaProps {
   onReorderTabs: (collectionId: string, sourceTabId: string, targetTabId: string, position: 'before' | 'after') => void;
   onUpdateNotes: (collectionId: string, notes: string) => void;
   onSelectCollection: (collectionId: string) => void;
+  onUpdateTab?: (collectionId: string, tabId: string, updates: { title: string; url: string; favicon: string }) => void;
+  onRefreshTabTitle?: (collectionId: string, tabId: string) => Promise<void>;
+  onRefreshAllTabTitles?: (collectionId: string) => Promise<void>;
 }
 
 export const MainArea: React.FC<MainAreaProps> = ({
@@ -39,12 +44,16 @@ export const MainArea: React.FC<MainAreaProps> = ({
   onReorderTabs,
   onUpdateNotes,
   onSelectCollection,
+  onUpdateTab,
+  onRefreshTabTitle,
+  onRefreshAllTabTitles,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingUrls, setIsAddingUrls] = useState(false);
   const [urlsInput, setUrlsInput] = useState('');
   const [infoToast, setInfoToast] = useState<string | null>(null);
   const [notesTriggered, setNotesTriggered] = useState(false);
+  const [tabToEdit, setTabToEdit] = useState<{ tab: Tab; collectionId: string } | null>(null);
 
   // Bulk selection states
   const [selectedTabIds, setSelectedTabIds] = useState<string[]>([]);
@@ -498,15 +507,11 @@ export const MainArea: React.FC<MainAreaProps> = ({
                 >
                   {/* Icon & Details */}
                   <div className="flex items-center gap-2.5 overflow-hidden flex-1" id={`search-tab-meta-${tab.id}`}>
-                    <img
-                      src={tab.favicon}
-                      alt=""
-                      onError={(e) => {
-                        const target = e.currentTarget as HTMLImageElement;
-                        target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' %3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E";
-                      }}
-                      referrerPolicy="no-referrer"
-                      className="w-3.5 h-3.5 object-contain shrink-0 rounded-sm bg-gray-100"
+                    <TabFavicon
+                      url={tab.url}
+                      favicon={tab.favicon}
+                      id={`search-tab-favicon-${tab.id}`}
+                      className="w-3.5 h-3.5 object-contain shrink-0 rounded-sm"
                     />
 
                     <div className="flex items-baseline gap-2 overflow-hidden flex-1" id={`search-tab-title-desc-${tab.id}`}>
@@ -555,6 +560,13 @@ export const MainArea: React.FC<MainAreaProps> = ({
 
                     {/* Action buttons (only appear on hover) */}
                     <div className="hidden group-hover:flex items-center gap-1 bg-white pl-2 transition-all">
+                      <button
+                        onClick={() => setTabToEdit({ tab, collectionId: parentCol.id })}
+                        title="Rename / Edit Link"
+                        className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                      >
+                        <Edit2 size={12.5} />
+                      </button>
                       <button
                         onClick={() => handleSingleTabOpen(tab.url)}
                         title="Open Tab in New Window"
@@ -877,6 +889,11 @@ export const MainArea: React.FC<MainAreaProps> = ({
                         </span>
                       </div>
                       
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50/60 border border-blue-100/70 rounded-lg text-[11px] text-blue-700 font-medium">
+                        <Sparkles size={12} className="text-blue-500 shrink-0" />
+                        <span>Auto-fetches Titles</span>
+                      </div>
+                      
                       <textarea
                         id="clipboard-urls-textarea"
                         ref={textareaRef}
@@ -940,6 +957,18 @@ export const MainArea: React.FC<MainAreaProps> = ({
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block select-none">
                         Saved Tabs ({collection.tabs.length})
                       </span>
+
+                      {collection.tabs.length > 0 && onRefreshAllTabTitles && (
+                        <button
+                          type="button"
+                          onClick={() => onRefreshAllTabTitles(collection.id)}
+                          className="inline-flex items-center gap-1 text-[10.5px] font-bold text-gray-400 hover:text-blue-600 transition-colors ml-1 cursor-pointer"
+                          title="Auto-fetch and refresh web titles for all tabs in this collection"
+                        >
+                          <Sparkles size={11} className="text-blue-500" />
+                          <span>Refresh Titles</span>
+                        </button>
+                      )}
                     </div>
 
                     {selectedTabIds.length > 0 && (
@@ -1000,22 +1029,31 @@ export const MainArea: React.FC<MainAreaProps> = ({
                               )}
                             </button>
 
-                            <img
+                            <TabFavicon
+                              url={tab.url}
+                              favicon={tab.favicon}
                               id={`tab-favicon-${tab.id}`}
-                              src={tab.favicon}
-                              alt=""
-                              onError={(e) => {
-                                const target = e.currentTarget as HTMLImageElement;
-                                target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' %3E%3Ccircle cx='12' cy='12' r='10'/%3E%3C/svg%3E";
-                              }}
-                              referrerPolicy="no-referrer"
-                              className="w-3.5 h-3.5 object-contain shrink-0 rounded-sm bg-gray-100 cursor-grab"
+                              className="w-3.5 h-3.5 object-contain shrink-0 rounded-sm cursor-grab"
                             />
 
                             <div className="flex items-baseline gap-2 overflow-hidden flex-1 cursor-grab" id="tab-titles-wrapper">
-                              <span className="font-bold text-gray-800 text-[12.5px] truncate max-w-[280px]" id="tab-main-title">
+                              <span
+                                className="font-bold text-gray-800 text-[12.5px] truncate max-w-[280px] hover:text-black cursor-pointer"
+                                id="tab-main-title"
+                                title="Double-click to rename"
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  setTabToEdit({ tab, collectionId: collection.id });
+                                }}
+                              >
                                 {tab.title}
                               </span>
+                              {tab.isLoadingTitle && (
+                                <span className="inline-flex items-center gap-1 text-[9.5px] text-blue-500 font-medium px-1.5 py-0.5 rounded bg-blue-50/70 border border-blue-100/60 animate-pulse shrink-0">
+                                  <Loader2 size={9.5} className="animate-spin text-blue-500" />
+                                  <span>fetching title...</span>
+                                </span>
+                              )}
                               <span
                                 className="font-mono text-[11px] text-gray-400 truncate max-w-[240px] hover:text-gray-600 cursor-pointer"
                                 id="tab-truncated-url"
@@ -1036,6 +1074,30 @@ export const MainArea: React.FC<MainAreaProps> = ({
                             </span>
 
                             <div className="hidden group-hover:flex items-center gap-1 bg-white pl-2 transition-all" id="tab-hover-actions">
+                              <button
+                                id={`rename-tab-btn-${tab.id}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTabToEdit({ tab, collectionId: collection.id });
+                                }}
+                                title="Rename / Edit Link"
+                                className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Edit2 size={12.5} />
+                              </button>
+                              {onRefreshTabTitle && (
+                                <button
+                                  id={`refresh-title-btn-${tab.id}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRefreshTabTitle(collection.id, tab.id);
+                                  }}
+                                  title="Auto-fetch latest web title (YouTube, Google Docs, etc.)"
+                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
+                                >
+                                  <Sparkles size={12.5} />
+                                </button>
+                              )}
                               <button
                                 id={`open-link-icon-btn-${tab.id}`}
                                 onClick={(e) => {
@@ -1302,6 +1364,18 @@ export const MainArea: React.FC<MainAreaProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Rename & Edit Link Modal */}
+      <TabEditModal
+        isOpen={!!tabToEdit}
+        tab={tabToEdit?.tab ?? null}
+        onClose={() => setTabToEdit(null)}
+        onSave={(tabId, updates) => {
+          if (tabToEdit && onUpdateTab) {
+            onUpdateTab(tabToEdit.collectionId, tabId, updates);
+          }
+        }}
+      />
     </div>
   );
 };

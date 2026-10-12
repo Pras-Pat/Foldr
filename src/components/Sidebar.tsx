@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Star, ChevronRight, ChevronDown, Plus, FileText } from 'lucide-react';
+import { Star, ChevronRight, ChevronDown, Plus } from 'lucide-react';
 import { Collection, StatusType } from '../types';
 import { LucideIcon } from './LucideIcon';
 
@@ -244,11 +244,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Meta */}
         <div className="flex items-center gap-1 shrink-0 ml-1">
-          {sub.notes && sub.notes.trim() && (
-            <span title="Collection has notes" className="text-gray-400 group-hover:text-gray-500">
-              <FileText size={9.5} />
-            </span>
-          )}
           <span className="text-[10.5px] text-gray-400 group-hover:text-gray-500 font-medium">
             {sub.tabs.length}
           </span>
@@ -346,12 +341,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Right Meta (Tab count, + Add Subcollection on hover, Status dot, Star) */}
           <div className="flex items-center gap-1 shrink-0 ml-1.5" id="row-meta-indicators">
-            {rootCol.notes && rootCol.notes.trim() && (
-              <span title="Collection has notes" className="text-gray-400 group-hover:text-gray-500">
-                <FileText size={10} />
-              </span>
-            )}
-
             {/* Quick Add Subcollection Button on Hover */}
             <button
               type="button"

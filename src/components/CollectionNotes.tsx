@@ -597,6 +597,12 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
     });
   };
 
+  // Helper: check if the user is selecting text (so we don't interrupt multi-line selection on mouseup)
+  const isTextSelected = () => {
+    const sel = window.getSelection();
+    return sel && sel.toString().length > 0;
+  };
+
   // Render an individual markdown line in preview mode (clickable to edit)
   const renderFormattedLine = (line: string, idx: number) => {
     // Interactive Checkbox line: - [ ] or - [x] or * [ ]
@@ -609,6 +615,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           key={idx}
           className="flex items-start gap-2 group/task py-0.5 transition-colors cursor-pointer hover:bg-gray-50/60 rounded px-1 -mx-1"
           onClick={() => {
+            if (isTextSelected()) return;
             setIsEditing(true);
             setActiveLineIndex(idx);
             setCursorTarget(line.length);
@@ -651,6 +658,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           <h1
             key={idx}
             onClick={() => {
+              if (isTextSelected()) return;
               setIsEditing(true);
               setActiveLineIndex(idx);
               setCursorTarget(line.length);
@@ -666,6 +674,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           <h2
             key={idx}
             onClick={() => {
+              if (isTextSelected()) return;
               setIsEditing(true);
               setActiveLineIndex(idx);
               setCursorTarget(line.length);
@@ -681,6 +690,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           <h3
             key={idx}
             onClick={() => {
+              if (isTextSelected()) return;
               setIsEditing(true);
               setActiveLineIndex(idx);
               setCursorTarget(line.length);
@@ -696,6 +706,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           <h4
             key={idx}
             onClick={() => {
+              if (isTextSelected()) return;
               setIsEditing(true);
               setActiveLineIndex(idx);
               setCursorTarget(line.length);
@@ -719,6 +730,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           key={idx}
           style={{ paddingLeft: `${indent * 8}px` }}
           onClick={() => {
+            if (isTextSelected()) return;
             setIsEditing(true);
             setActiveLineIndex(idx);
             setCursorTarget(line.length);
@@ -743,6 +755,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           key={idx}
           style={{ paddingLeft: `${indent * 8}px` }}
           onClick={() => {
+            if (isTextSelected()) return;
             setIsEditing(true);
             setActiveLineIndex(idx);
             setCursorTarget(line.length);
@@ -761,6 +774,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
         <div
           key={idx}
           onClick={() => {
+            if (isTextSelected()) return;
             setIsEditing(true);
             setActiveLineIndex(idx);
             setCursorTarget(line.length);
@@ -778,6 +792,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
         <div
           key={idx}
           onClick={() => {
+            if (isTextSelected()) return;
             setIsEditing(true);
             setActiveLineIndex(idx);
             setCursorTarget(line.length);
@@ -795,6 +810,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
         <div
           key={idx}
           onClick={() => {
+            if (isTextSelected()) return;
             setIsEditing(true);
             setActiveLineIndex(idx);
             setCursorTarget(0);
@@ -809,6 +825,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
       <p
         key={idx}
         onClick={() => {
+          if (isTextSelected()) return;
           setIsEditing(true);
           setActiveLineIndex(idx);
           setCursorTarget(line.length);
@@ -1199,6 +1216,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
                   onClick={(e) => {
                     // If clicked on blank padding area below lines, activate/append last line
                     if (e.target === e.currentTarget) {
+                      if (isTextSelected()) return;
                       const lines = noteText ? noteText.split('\n') : [''];
                       if (lines.length === 0 || (lines.length === 1 && lines[0] === '')) {
                         setActiveLineIndex(0);
@@ -1260,6 +1278,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           ) : (
             <div
               onClick={() => {
+                if (isTextSelected()) return;
                 setIsEditing(true);
                 const lines = noteText ? noteText.split('\n') : [''];
                 const targetIdx = Math.max(0, lines.length - 1);

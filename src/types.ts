@@ -12,6 +12,8 @@ export interface Tab {
   title: string;
   favicon: string;
   addedAt: string; // ISO string
+  isCustomTitle?: boolean;
+  isLoadingTitle?: boolean;
 }
 
 export interface Collection {

@@ -10,6 +10,7 @@ import { Sidebar } from './components/Sidebar';
 import { MainArea } from './components/MainArea';
 import { CollectionModal } from './components/CollectionModal';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { getSmartFallbackTitle, fetchUrlMetadata, normalizeUrl, getDomainFavicon } from './utils/urlMetadata';
 
 // Local storage key helper
 const STORAGE_KEY = 'foldr_archiver_collections_v1';
@@ -77,9 +78,34 @@ export default function App() {
       if (persisted) {
         const parsed = JSON.parse(persisted) as Collection[];
         if (Array.isArray(parsed)) {
-          setCollections(parsed);
-          if (parsed.length > 0) {
-            setActiveCollectionId(parsed[0].id);
+          // Normalize and repair any existing tabs with missing or broken favicons (e.g. YouTube or renamed docs)
+          const repaired = parsed.map((col) => ({
+            ...col,
+            tabs: (col.tabs || []).map((t) => {
+              const url = t.url || '';
+              const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+              const isGoogleDoc = url.includes('docs.google.com');
+              const isCraft = url.includes('craft.do') || url.includes('craft.me');
+              
+              // If favicon is missing, undefined, or generic google s2 for docs/youtube
+              if (
+                !t.favicon ||
+                t.favicon.includes('undefined') ||
+                (isYouTube && (t.favicon.includes('.ico') || t.favicon.includes('f17ec1e9'))) ||
+                (isGoogleDoc && t.favicon.includes('google.com/s2/favicons')) ||
+                (isCraft && (!t.favicon || t.favicon.includes('google.com/s2/favicons')))
+              ) {
+                return {
+                  ...t,
+                  favicon: getDomainFavicon(url),
+                };
+              }
+              return t;
+            }),
+          }));
+          setCollections(repaired);
+          if (repaired.length > 0) {
+            setActiveCollectionId(repaired[0].id);
           }
           setIsLoaded(true);
           return;
@@ -218,62 +244,32 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  // Add tab URLs parsing utility inline
-  const parseUrl = (input: string): { url: string; title: string; favicon: string } => {
-    let cleaned = input.trim();
-    if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
-      cleaned = 'https://' + cleaned;
-    }
-    
-    let title = '';
-    let favicon = '';
-    try {
-      const urlObj = new URL(cleaned);
-      let host = urlObj.hostname;
-      if (host.startsWith('www.')) host = host.substring(4);
-      
-      const parts = host.split('.');
-      let name = parts[0];
-      if (name) {
-        name = name.charAt(0).toUpperCase() + name.slice(1);
-      }
-      
-      let path = urlObj.pathname;
-      if (path && path !== '/') {
-        const segments = path.split('/').filter(Boolean);
-        if (segments.length > 0) {
-          const lastSeg = segments[segments.length - 1];
-          if (lastSeg) {
-            const cleanSeg = lastSeg.replace(/[-_]/g, ' ');
-            name += ` - ${cleanSeg.charAt(0).toUpperCase() + cleanSeg.slice(1)}`;
-          }
-        }
-      }
-      
-      title = name || host;
-      favicon = `https://www.google.com/s2/favicons?domain=${urlObj.protocol}//${urlObj.hostname}&sz=32`;
-    } catch (e) {
-      title = input;
-      favicon = `https://www.google.com/s2/favicons?domain=https://${input}&sz=32`;
-    }
-    
-    return { url: cleaned, title, favicon };
-  };
-
+  // Add tabs with instant smart fallback titles and background rich title auto-fetching
   const handleAddTabs = (collectionId: string, urlsStr: string) => {
     const lines = urlsStr.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+
     const newTabs: Tab[] = lines.map((line, index) => {
-      const parsed = parseUrl(line);
+      const cleanUrl = normalizeUrl(line);
+      const fallbackTitle = getSmartFallbackTitle(cleanUrl);
+      let host = '';
+      try {
+        host = new URL(cleanUrl).hostname;
+      } catch {
+        host = cleanUrl;
+      }
       return {
         id: `tab-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`,
         collectionId,
-        url: parsed.url,
-        title: parsed.title,
-        favicon: parsed.favicon,
+        url: cleanUrl,
+        title: fallbackTitle,
+        favicon: getDomainFavicon(cleanUrl),
         addedAt: new Date().toISOString(),
+        isLoadingTitle: true,
       };
     });
 
+    // 1. Instantly append tabs to collection
     updateCollections((prev) =>
       prev.map((col) => {
         if (col.id === collectionId) {
@@ -286,7 +282,174 @@ export default function App() {
         return col;
       })
     );
-    showToast(`Added ${newTabs.length} tab(s) successfully!`, "success");
+    showToast(`Added ${newTabs.length} bookmark(s)! Fetching titles...`, "info");
+
+    // 2. Fetch rich web titles in the background concurrently
+    newTabs.forEach((tab) => {
+      fetchUrlMetadata(tab.url)
+        .then((meta) => {
+          updateCollections((prev) =>
+            prev.map((col) => {
+              if (col.id === collectionId) {
+                return {
+                  ...col,
+                  tabs: col.tabs.map((t) => {
+                    if (t.id === tab.id) {
+                      return {
+                        ...t,
+                        title: t.isCustomTitle ? t.title : (meta.title || t.title),
+                        favicon: meta.favicon || t.favicon,
+                        isLoadingTitle: false,
+                      };
+                    }
+                    return t;
+                  }),
+                };
+              }
+              return col;
+            })
+          );
+        })
+        .catch(() => {
+          updateCollections((prev) =>
+            prev.map((col) => {
+              if (col.id === collectionId) {
+                return {
+                  ...col,
+                  tabs: col.tabs.map((t) =>
+                    t.id === tab.id ? { ...t, isLoadingTitle: false } : t
+                  ),
+                };
+              }
+              return col;
+            })
+          );
+        });
+    });
+  };
+
+  // Rename or edit an existing tab bookmark
+  const handleUpdateTab = (
+    collectionId: string,
+    tabId: string,
+    updates: { title?: string; url?: string; favicon?: string }
+  ) => {
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === collectionId) {
+          return {
+            ...col,
+            tabs: col.tabs.map((t) => {
+              if (t.id === tabId) {
+                return {
+                  ...t,
+                  ...updates,
+                  isCustomTitle: updates.title !== undefined ? true : t.isCustomTitle,
+                };
+              }
+              return t;
+            }),
+            lastOpenedAt: new Date().toISOString(),
+          };
+        }
+        return col;
+      })
+    );
+    showToast("Bookmark updated successfully!", "success");
+  };
+
+  // Refresh or auto-fetch title for a single tab
+  const handleRefreshTabTitle = async (collectionId: string, tabId: string) => {
+    const targetCol = collections.find((c) => c.id === collectionId);
+    const targetTab = targetCol?.tabs.find((t) => t.id === tabId);
+    if (!targetTab) return;
+
+    // Set loading indicator
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === collectionId) {
+          return {
+            ...col,
+            tabs: col.tabs.map((t) => (t.id === tabId ? { ...t, isLoadingTitle: true } : t)),
+          };
+        }
+        return col;
+      })
+    );
+
+    try {
+      const meta = await fetchUrlMetadata(targetTab.url);
+      updateCollections((prev) =>
+        prev.map((col) => {
+          if (col.id === collectionId) {
+            return {
+              ...col,
+              tabs: col.tabs.map((t) => {
+                if (t.id === tabId) {
+                  return {
+                    ...t,
+                    title: meta.title || t.title,
+                    favicon: meta.favicon || t.favicon,
+                    isLoadingTitle: false,
+                    isCustomTitle: false,
+                  };
+                }
+                return t;
+              }),
+            };
+          }
+          return col;
+        })
+      );
+      showToast(`Updated title: "${meta.title}"`, "success");
+    } catch {
+      updateCollections((prev) =>
+        prev.map((col) => {
+          if (col.id === collectionId) {
+            return {
+              ...col,
+              tabs: col.tabs.map((t) => (t.id === tabId ? { ...t, isLoadingTitle: false } : t)),
+            };
+          }
+          return col;
+        })
+      );
+      showToast("Could not retrieve web title.", "error");
+    }
+  };
+
+  // Refresh titles for all tabs in a collection
+  const handleRefreshAllTabTitles = async (collectionId: string) => {
+    const targetCol = collections.find((c) => c.id === collectionId);
+    if (!targetCol || targetCol.tabs.length === 0) return;
+
+    showToast(`Fetching web titles for ${targetCol.tabs.length} bookmark(s)...`, "info");
+
+    targetCol.tabs.forEach((tab) => {
+      fetchUrlMetadata(tab.url).then((meta) => {
+        updateCollections((prev) =>
+          prev.map((col) => {
+            if (col.id === collectionId) {
+              return {
+                ...col,
+                tabs: col.tabs.map((t) => {
+                  if (t.id === tab.id) {
+                    return {
+                      ...t,
+                      title: meta.title || t.title,
+                      favicon: meta.favicon || t.favicon,
+                      isLoadingTitle: false,
+                    };
+                  }
+                  return t;
+                }),
+              };
+            }
+            return col;
+          })
+        );
+      });
+    });
   };
 
   const handleDeleteTab = (collectionId: string, tabId: string) => {
@@ -580,6 +743,9 @@ export default function App() {
         onReorderTabs={handleReorderTabs}
         onUpdateNotes={handleUpdateCollectionNotes}
         onSelectCollection={setActiveCollectionId}
+        onUpdateTab={handleUpdateTab}
+        onRefreshTabTitle={handleRefreshTabTitle}
+        onRefreshAllTabTitles={handleRefreshAllTabTitles}
       />
 
       {/* Modular Settings & Creation Modal */}
