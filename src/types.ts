@@ -25,6 +25,8 @@ export interface Collection {
   createdAt: string; // ISO string
   lastOpenedAt: string; // ISO string
   tabs: Tab[];
+  notes?: string;
+  notesUpdatedAt?: string;
 }
 
 export const INITIAL_COLLECTIONS: Collection[] = [
@@ -37,6 +39,12 @@ export const INITIAL_COLLECTIONS: Collection[] = [
     starred: false,
     createdAt: new Date('2026-05-20T10:00:00Z').toISOString(),
     lastOpenedAt: new Date('2026-05-31T09:00:00Z').toISOString(),
+    notes: `💡 **Design Direction & Inspiration**
+- Focus on clean micro-interactions, soft neutral tones, and brutalist typography accents.
+- [x] Check Awwwards modern navigation patterns
+- [ ] Compare Dribbble card layouts and hover treatments
+- [ ] Finalize typography pairings for dashboard layout`,
+    notesUpdatedAt: new Date('2026-05-31T09:00:00Z').toISOString(),
     tabs: [
       {
         id: 'tab-1-1',
@@ -73,6 +81,13 @@ export const INITIAL_COLLECTIONS: Collection[] = [
     starred: false,
     createdAt: new Date('2026-05-24T08:00:00Z').toISOString(),
     lastOpenedAt: new Date('2026-05-31T08:30:00Z').toISOString(),
+    notes: `🎯 **Job Criteria & Next Steps**
+- Target Roles: Staff / Senior UI & Frontend Engineer
+- Key Stack: TypeScript, React 19, Tailwind, Node.js
+- [x] Update LinkedIn profile summary and experiences
+- [ ] Reach out to contacts on Wellfound
+- [ ] Prep portfolio case study presentation`,
+    notesUpdatedAt: new Date('2026-05-31T08:30:00Z').toISOString(),
     tabs: [
       {
         id: 'tab-2-1',
@@ -101,6 +116,11 @@ export const INITIAL_COLLECTIONS: Collection[] = [
     starred: true,
     createdAt: new Date('2026-05-26T12:00:00Z').toISOString(),
     lastOpenedAt: new Date('2026-05-31T09:47:00Z').toISOString(),
+    notes: `📚 **Key Takeaways & Reading Queue**
+- Paul Graham: Focus on clarity over ornamentation in technical writing.
+- Linear Method: Build momentum with small atomic cycles.
+- [ ] Finish Stripe Developer Documentation chapter on idempotency keys`,
+    notesUpdatedAt: new Date('2026-05-31T09:47:00Z').toISOString(),
     tabs: [
       {
         id: 'tab-3-1',

@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Collection, Tab, StatusType } from '../types';
 import { LucideIcon } from './LucideIcon';
 import { ConfirmationModal } from './ConfirmationModal';
+import { CollectionNotes } from './CollectionNotes';
 
 interface MainAreaProps {
   collection: Collection | null;
@@ -21,6 +22,7 @@ interface MainAreaProps {
   onDeleteTab: (collectionId: string, tabId: string) => void;
   onDeleteMultipleTabs: (collectionId: string, tabIds: string[]) => void;
   onReorderTabs: (collectionId: string, sourceTabId: string, targetTabId: string, position: 'before' | 'after') => void;
+  onUpdateNotes: (collectionId: string, notes: string) => void;
   onSelectCollection: (collectionId: string) => void;
 }
 
@@ -35,12 +37,14 @@ export const MainArea: React.FC<MainAreaProps> = ({
   onDeleteTab,
   onDeleteMultipleTabs,
   onReorderTabs,
+  onUpdateNotes,
   onSelectCollection,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingUrls, setIsAddingUrls] = useState(false);
   const [urlsInput, setUrlsInput] = useState('');
   const [infoToast, setInfoToast] = useState<string | null>(null);
+  const [notesTriggered, setNotesTriggered] = useState(false);
 
   // Bulk selection states
   const [selectedTabIds, setSelectedTabIds] = useState<string[]>([]);
@@ -192,6 +196,19 @@ export const MainArea: React.FC<MainAreaProps> = ({
           setIsAddingUrls(true);
         } else {
           setInfoToast('Please select or create a collection first to add tab bookmarks.');
+        }
+        return;
+      }
+
+      // Quick Focus Collection Notes: 'N' key (when no inputs active)
+      if (e.key.toLowerCase() === 'n' && !isCmdOrCtrl && !e.altKey && !isInputActive) {
+        e.preventDefault();
+        if (collection) {
+          setNotesTriggered(true);
+          const scroller = document.getElementById('collection-tablist-scroller');
+          if (scroller) {
+            scroller.scrollTo({ top: 0, behavior: 'smooth' });
+          }
         }
         return;
       }
@@ -745,6 +762,16 @@ export const MainArea: React.FC<MainAreaProps> = ({
                   </div>
                 )}
 
+                {/* Collection Notes & Context Section */}
+                <div className="p-6 pb-0" id="collection-notes-section">
+                  <CollectionNotes
+                    collection={collection}
+                    onUpdateNotes={(newNotes) => onUpdateNotes(collection.id, newNotes)}
+                    isOpenTriggered={notesTriggered}
+                    onClearTrigger={() => setNotesTriggered(false)}
+                  />
+                </div>
+
                 {/* Subcollections Section for root collections */}
                 {!collection.parentId && (
                   <div className="p-6 pb-0" id="subcollections-section">
@@ -1204,6 +1231,12 @@ export const MainArea: React.FC<MainAreaProps> = ({
                         <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 font-mono text-[10px] rounded text-gray-600 font-bold shadow-sm">Ctrl</kbd>
                         <span className="text-[10px] text-gray-400">+</span>
                         <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 font-mono text-[10px] rounded text-gray-600 font-bold shadow-sm">O</kbd>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between py-1 px-1 text-[12px]" id="shortcut-row-notes">
+                      <span className="text-gray-500 font-medium">Focus Collection Notes</span>
+                      <div className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-white border border-gray-200 font-mono text-[10px] rounded text-gray-600 font-bold shadow-sm">N</kbd>
                       </div>
                     </div>
                   </div>

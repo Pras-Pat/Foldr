@@ -353,6 +353,22 @@ export default function App() {
     );
   };
 
+  // Update collection-specific notes
+  const handleUpdateCollectionNotes = (collectionId: string, notes: string) => {
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === collectionId) {
+          return {
+            ...col,
+            notes,
+            notesUpdatedAt: new Date().toISOString(),
+          };
+        }
+        return col;
+      })
+    );
+  };
+
   // Make a collection into a subcollection of targetParentId (or detach to root if targetParentId is null)
   const handleMoveCollectionToParent = (sourceId: string, targetParentId: string | null) => {
     if (sourceId === targetParentId) return;
@@ -562,6 +578,7 @@ export default function App() {
         onDeleteTab={handleDeleteTab}
         onDeleteMultipleTabs={handleDeleteMultipleTabs}
         onReorderTabs={handleReorderTabs}
+        onUpdateNotes={handleUpdateCollectionNotes}
         onSelectCollection={setActiveCollectionId}
       />
 
