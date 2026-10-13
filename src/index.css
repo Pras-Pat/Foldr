@@ -1426,3 +1426,234 @@ html[data-theme="dark"] #confirmation-modal-card .bg-blue-50 {
   border-color: rgba(59, 130, 246, 0.3) !important;
   color: #60a5fa !important;
 }
+
+/* ========================================================
+   EMPTY STATES & UNIFIED COLLECTION WORKSPACE (DARK MODE)
+   ======================================================== */
+html.dark #unified-collection-empty-state,
+html[data-theme="dark"] #unified-collection-empty-state {
+  background-color: transparent !important;
+}
+
+html.dark #empty-state-title,
+html[data-theme="dark"] #empty-state-title {
+  color: #ffffff !important;
+}
+
+html.dark #empty-state-subtitle,
+html[data-theme="dark"] #empty-state-subtitle {
+  color: #9ca3af !important;
+}
+
+html.dark #empty-action-add-urls,
+html[data-theme="dark"] #empty-action-add-urls,
+html.dark #empty-action-add-notes,
+html[data-theme="dark"] #empty-action-add-notes {
+  background-color: #16171e !important;
+  border-color: #252733 !important;
+}
+
+html.dark #empty-action-add-urls:hover,
+html[data-theme="dark"] #empty-action-add-urls:hover,
+html.dark #empty-action-add-notes:hover,
+html[data-theme="dark"] #empty-action-add-notes:hover {
+  background-color: #1c1e28 !important;
+  border-color: #383c4e !important;
+}
+
+html.dark #empty-action-add-subcollection,
+html[data-theme="dark"] #empty-action-add-subcollection {
+  color: #8a8f9e !important;
+}
+
+html.dark #empty-action-add-subcollection:hover,
+html[data-theme="dark"] #empty-action-add-subcollection:hover {
+  color: #ffffff !important;
+}
+
+/* Secondary Empty Bookmark State (when notes already exist) */
+html.dark #collection-tabs-empty,
+html[data-theme="dark"] #collection-tabs-empty {
+  background-color: rgba(22, 23, 30, 0.6) !important;
+  border-color: #282b39 !important;
+}
+
+html.dark #collection-tabs-empty #no-tabs-found,
+html.dark #no-tabs-found,
+html[data-theme="dark"] #no-tabs-found {
+  color: #ffffff !important;
+}
+
+html.dark #collection-tabs-empty p,
+html[data-theme="dark"] #collection-tabs-empty p {
+  color: #9ca3af !important;
+}
+
+html.dark #empty-tabs-add-btn,
+html[data-theme="dark"] #empty-tabs-add-btn {
+  background-color: #ffffff !important;
+  color: #111215 !important;
+}
+
+html.dark #empty-tabs-add-btn:hover,
+html[data-theme="dark"] #empty-tabs-add-btn:hover {
+  background-color: #e5e7eb !important;
+}
+
+/* Notes Empty Prompt Bar */
+html.dark #collection-notes-empty-prompt,
+html[data-theme="dark"] #collection-notes-empty-prompt {
+  background-color: #16171e !important;
+  border-color: #252733 !important;
+}
+
+html.dark #collection-notes-empty-prompt:hover,
+html[data-theme="dark"] #collection-notes-empty-prompt:hover {
+  background-color: #1c1d27 !important;
+  border-color: #353848 !important;
+}
+
+html.dark #collection-notes-empty-prompt span,
+html[data-theme="dark"] #collection-notes-empty-prompt span {
+  color: #9ca3af !important;
+}
+
+html.dark #collection-notes-empty-prompt span.font-bold,
+html[data-theme="dark"] #collection-notes-empty-prompt span.font-bold {
+  color: #ffffff !important;
+}
+
+html.dark #collection-notes-empty-prompt button,
+html[data-theme="dark"] #collection-notes-empty-prompt button {
+  background-color: #20222c !important;
+  border-color: #2b2e3c !important;
+  color: #d1d5db !important;
+}
+
+html.dark #collection-notes-empty-prompt button:hover,
+html[data-theme="dark"] #collection-notes-empty-prompt button:hover {
+  background-color: #282b39 !important;
+  color: #ffffff !important;
+}
+
+/* Header Action Button disabled state */
+html.dark #open-all-tabs-action-btn:disabled,
+html[data-theme="dark"] #open-all-tabs-action-btn:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+}
+
+/* ========================================================
+   REFINED DARK MODE FOCUS: HEADER, NOTES EDITOR & FORMATTING
+   ======================================================== */
+
+/* Selector 1: Subcollection action button in header */
+html.dark #header-add-subcollection-btn,
+html[data-theme="dark"] #header-add-subcollection-btn {
+  background-color: #1a1c24 !important;
+  border-color: #282b36 !important;
+  color: #d1d5db !important;
+}
+
+html.dark #header-add-subcollection-btn:hover,
+html[data-theme="dark"] #header-add-subcollection-btn:hover {
+  background-color: #242733 !important;
+  border-color: #353846 !important;
+  color: #ffffff !important;
+}
+
+html.dark #header-add-subcollection-btn svg,
+html[data-theme="dark"] #header-add-subcollection-btn svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+/* Selector 2: Done editing notes button with legible high-contrast text & icon */
+html.dark #done-editing-notes-btn,
+html[data-theme="dark"] #done-editing-notes-btn {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #111215 !important;
+}
+
+html.dark #done-editing-notes-btn:hover,
+html[data-theme="dark"] #done-editing-notes-btn:hover {
+  background-color: #e5e7eb !important;
+  border-color: #e5e7eb !important;
+  color: #111215 !important;
+}
+
+html.dark #done-editing-notes-btn span,
+html[data-theme="dark"] #done-editing-notes-btn span {
+  color: #111215 !important;
+  font-weight: 700 !important;
+}
+
+html.dark #done-editing-notes-btn svg,
+html[data-theme="dark"] #done-editing-notes-btn svg {
+  color: #111215 !important;
+  stroke: #111215 !important;
+}
+
+/* Selector 3: Live Preview toggle button inside notes formatting toolbar */
+html.dark #toggle-live-preview-btn,
+html.dark #notes-formatting-toolbar button.bg-blue-50,
+html[data-theme="dark"] #toggle-live-preview-btn,
+html[data-theme="dark"] #notes-formatting-toolbar button.bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.18) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  color: #60a5fa !important;
+}
+
+html.dark #toggle-live-preview-btn span,
+html.dark #notes-formatting-toolbar button.bg-blue-50 span,
+html[data-theme="dark"] #toggle-live-preview-btn span,
+html[data-theme="dark"] #notes-formatting-toolbar button.bg-blue-50 span {
+  color: #60a5fa !important;
+}
+
+html.dark #toggle-live-preview-btn svg,
+html.dark #notes-formatting-toolbar button.bg-blue-50 svg,
+html[data-theme="dark"] #toggle-live-preview-btn svg,
+html[data-theme="dark"] #notes-formatting-toolbar button.bg-blue-50 svg {
+  color: #60a5fa !important;
+  stroke: #60a5fa !important;
+}
+
+html.dark #toggle-live-preview-btn:hover,
+html.dark #notes-formatting-toolbar button.bg-blue-50:hover,
+html[data-theme="dark"] #toggle-live-preview-btn:hover,
+html[data-theme="dark"] #notes-formatting-toolbar button.bg-blue-50:hover {
+  background-color: rgba(59, 130, 246, 0.28) !important;
+  color: #93c5fd !important;
+}
+
+/* Selector 4: Preview line text and list spans inside notes content */
+html.dark #collection-notes-card .space-y-0\.5 span.text-gray-800,
+html.dark #collection-notes-card span.text-gray-800,
+html[data-theme="dark"] #collection-notes-card .space-y-0\.5 span.text-gray-800,
+html[data-theme="dark"] #collection-notes-card span.text-gray-800 {
+  color: #e2e8f0 !important;
+}
+
+html.dark #collection-notes-card .space-y-0\.5 span.text-gray-500,
+html.dark #collection-notes-card span.font-mono.text-gray-500,
+html[data-theme="dark"] #collection-notes-card .space-y-0\.5 span.text-gray-500,
+html[data-theme="dark"] #collection-notes-card span.font-mono.text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark #collection-notes-card p.text-gray-800,
+html[data-theme="dark"] #collection-notes-card p.text-gray-800 {
+  color: #e2e8f0 !important;
+}
+
+/* Selector 5: Inline code snippets inside formatted lines and paragraphs */
+html.dark #collection-notes-card code,
+html.dark #collection-notes-card p code,
+html[data-theme="dark"] #collection-notes-card code,
+html[data-theme="dark"] #collection-notes-card p code {
+  background-color: #12131a !important;
+  border-color: #262938 !important;
+  color: #34d399 !important;
+}

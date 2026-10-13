@@ -36,6 +36,7 @@ interface CollectionNotesProps {
   onUpdateNotes: (notes: string) => void;
   isOpenTriggered?: boolean;
   onClearTrigger?: () => void;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
 export const CollectionNotes: React.FC<CollectionNotesProps> = ({
@@ -43,12 +44,13 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
   onUpdateNotes,
   isOpenTriggered,
   onClearTrigger,
+  onEditingChange,
 }) => {
   const currentNotes = collection.notes || '';
   const [noteText, setNoteText] = useState(currentNotes);
-  const [isEditing, setIsEditing] = useState(false);
-  const [activeLineIndex, setActiveLineIndex] = useState<number | null>(null);
-  const [cursorTarget, setCursorTarget] = useState<number | null>(null);
+  const [isEditing, setIsEditing] = useState(!!isOpenTriggered);
+  const [activeLineIndex, setActiveLineIndex] = useState<number | null>(isOpenTriggered ? 0 : null);
+  const [cursorTarget, setCursorTarget] = useState<number | null>(isOpenTriggered ? 0 : null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -56,13 +58,27 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeLineRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const prevCollectionIdRef = useRef(collection.id);
+  const isFirstMountRef = useRef(true);
 
-  // Sync state when collection changes
+  // Sync state when collection changes (only when switching to a different collection)
   useEffect(() => {
-    setNoteText(collection.notes || '');
-    setIsEditing(false);
-    setActiveLineIndex(null);
-  }, [collection.id]);
+    if (prevCollectionIdRef.current !== collection.id) {
+      prevCollectionIdRef.current = collection.id;
+      setNoteText(collection.notes || '');
+      setIsEditing(false);
+      setActiveLineIndex(null);
+    }
+  }, [collection.id, collection.notes]);
+
+  // Notify parent of editing state changes (only on user action, never resetting on initial mount)
+  useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      return;
+    }
+    onEditingChange?.(isEditing);
+  }, [isEditing, onEditingChange]);
 
   // When triggered from header (Notes button), ensure expanded and focus
   useEffect(() => {
@@ -577,7 +593,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
       if (part.startsWith('`') && part.endsWith('`')) {
         const inner = part.slice(1, -1);
         return (
-          <code key={index} className="px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded font-mono text-[11px] border border-gray-200/60">
+          <code key={index} className="px-1.5 py-0.5 bg-gray-100 dark:bg-[#111217] text-gray-800 dark:text-emerald-400 rounded font-mono text-[11px] border border-gray-200/60 dark:border-[#282b39]">
             {inner}
           </code>
         );
@@ -638,7 +654,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           </button>
           <span
             className={`flex-1 min-w-0 transition-all ${
-              isChecked ? 'line-through text-gray-400 opacity-75' : 'text-gray-800'
+              isChecked ? 'line-through text-gray-400 opacity-75' : 'text-gray-800 dark:text-gray-200'
             }`}
           >
             {renderInlineMarkdown(content)}
@@ -737,10 +753,10 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           }}
           className="flex items-start gap-2 py-0.5 cursor-pointer hover:bg-gray-50/60 rounded px-1 -mx-1"
         >
-          <span className="font-mono font-bold text-[11.5px] text-gray-500 shrink-0 min-w-[18px] text-right mt-0.5 select-none">
+          <span className="font-mono font-bold text-[11.5px] text-gray-500 dark:text-gray-400 shrink-0 min-w-[18px] text-right mt-0.5 select-none">
             {num}.
           </span>
-          <span className="flex-1 min-w-0 text-gray-800">{renderInlineMarkdown(content)}</span>
+          <span className="flex-1 min-w-0 text-gray-800 dark:text-gray-200">{renderInlineMarkdown(content)}</span>
         </div>
       );
     }
@@ -763,7 +779,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           className="flex items-start gap-2 py-0.5 cursor-pointer hover:bg-gray-50/60 rounded px-1 -mx-1"
         >
           <span className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0 mt-2" />
-          <span className="flex-1 min-w-0 text-gray-800">{renderInlineMarkdown(content)}</span>
+          <span className="flex-1 min-w-0 text-gray-800 dark:text-gray-200">{renderInlineMarkdown(content)}</span>
         </div>
       );
     }
@@ -830,7 +846,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           setActiveLineIndex(idx);
           setCursorTarget(line.length);
         }}
-        className="text-gray-800 py-0.5 cursor-pointer hover:bg-gray-50/60 rounded px-1 -mx-1"
+        className="text-gray-800 dark:text-gray-200 py-0.5 cursor-pointer hover:bg-gray-50/60 dark:hover:bg-white/[0.04] rounded px-1 -mx-1"
       >
         {renderInlineMarkdown(line)}
       </p>
@@ -867,7 +883,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
           setActiveLineIndex(0);
           setCursorTarget(0);
         }}
-        className="group relative flex items-center justify-between px-3.5 py-2.5 bg-gray-50/70 hover:bg-gray-100/70 border border-dashed border-gray-200 hover:border-gray-300 rounded-xl cursor-pointer transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+        className="group relative flex items-center justify-between px-3.5 py-2.5 bg-gray-50/80 hover:bg-gray-100/80 dark:bg-[#16171e] dark:hover:bg-[#1a1c26] border border-gray-200/90 hover:border-gray-300 dark:border-[#252733] dark:hover:border-[#353848] rounded-xl cursor-pointer transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
       >
         <div className="flex items-center gap-2.5 text-gray-600 group-hover:text-gray-900 transition-colors">
           <div
@@ -881,11 +897,11 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
             <StickyNote size={12.5} />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[12px] font-bold text-gray-800 group-hover:text-gray-900">
+            <span className="text-[12px] font-bold text-gray-800 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">
               Notes & Tasks
             </span>
             <span className="text-gray-300 font-light">·</span>
-            <span className="text-[12px] font-normal text-gray-500 group-hover:text-gray-700">
+            <span className="text-[12px] font-normal text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300">
               Add notes, ideas, or task checklists for this collection...
             </span>
           </div>
@@ -893,7 +909,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
 
         <button
           type="button"
-          className="flex items-center gap-1 text-[11px] font-bold text-gray-700 group-hover:text-gray-900 bg-white hover:bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-lg shadow-xs transition-all"
+          className="flex items-center gap-1 text-[11px] font-bold text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white bg-white dark:bg-[#1e202b] hover:bg-gray-50 dark:hover:bg-[#272937] border border-gray-200 dark:border-[#2a2d3b] px-2.5 py-1 rounded-lg shadow-xs transition-all"
         >
           <Plus size={11} />
           <span>Add Note</span>
@@ -968,7 +984,7 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
                 setIsEditing(false);
                 setActiveLineIndex(null);
               }}
-              className="flex items-center gap-1 text-[11px] font-bold text-white bg-gray-900 hover:bg-black px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-xs"
+              className="flex items-center gap-1 text-[11px] font-bold text-white dark:text-gray-900 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-xs"
               title="Finish Editing (Ctrl+Enter or Esc)"
             >
               <Check size={11} />
@@ -1180,10 +1196,11 @@ export const CollectionNotes: React.FC<CollectionNotesProps> = ({
                         setActiveLineIndex(lines.length - 1);
                       }
                     }}
+                    id="toggle-live-preview-btn"
                     className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold transition-all cursor-pointer ${
                       showLivePreview 
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200/70 shadow-2xs' 
-                        : 'text-gray-500 hover:bg-gray-100 border border-transparent'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200/70 shadow-2xs dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700/60' 
+                        : 'text-gray-500 hover:bg-gray-100 border border-transparent dark:text-gray-400 dark:hover:bg-[#20222c]'
                     }`}
                     title={showLivePreview ? 'Switch to Full Raw Source Textarea' : 'Switch to Obsidian Live Preview (inline formatted)'}
                   >

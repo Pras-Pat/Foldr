@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Plus, Trash2, Edit, FolderOpen, ArrowUpRight, Play, Info, Keyboard, X, Edit2, Sparkles, Loader2 } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, FolderOpen, ArrowUpRight, Play, Info, Keyboard, X, Edit2, Sparkles, Loader2, StickyNote } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Collection, Tab, StatusType } from '../types';
 import { LucideIcon } from './LucideIcon';
@@ -53,6 +53,7 @@ export const MainArea: React.FC<MainAreaProps> = ({
   const [urlsInput, setUrlsInput] = useState('');
   const [infoToast, setInfoToast] = useState<string | null>(null);
   const [notesTriggered, setNotesTriggered] = useState(false);
+  const [isWritingNotes, setIsWritingNotes] = useState(false);
   const [tabToEdit, setTabToEdit] = useState<{ tab: Tab; collectionId: string } | null>(null);
 
   // Bulk selection states
@@ -62,6 +63,8 @@ export const MainArea: React.FC<MainAreaProps> = ({
   // Reset selection when collection or search query changes
   useEffect(() => {
     setSelectedTabIds([]);
+    setIsAddingUrls(false);
+    setIsWritingNotes(false);
   }, [collection?.id, searchQuery]);
 
   const handleToggleSelectTab = (tabId: string) => {
@@ -213,6 +216,7 @@ export const MainArea: React.FC<MainAreaProps> = ({
       if (e.key.toLowerCase() === 'n' && !isCmdOrCtrl && !e.altKey && !isInputActive) {
         e.preventDefault();
         if (collection) {
+          setIsWritingNotes(true);
           setNotesTriggered(true);
           const scroller = document.getElementById('collection-tablist-scroller');
           if (scroller) {
@@ -690,11 +694,23 @@ export const MainArea: React.FC<MainAreaProps> = ({
                   <button
                     id="open-all-tabs-action-btn"
                     onClick={handleOpenAll}
-                    className="flex items-center gap-1 px-3 py-1.5 border border-[#EBEBEB] rounded-lg bg-white/90 hover:bg-white text-gray-700 font-bold shadow-sm transition-all text-xs cursor-pointer hover:shadow"
+                    disabled={collection.tabs.length === 0}
+                    className="flex items-center gap-1 px-3 py-1.5 border border-[#EBEBEB] rounded-lg bg-white/90 hover:bg-white text-gray-700 font-bold shadow-sm transition-all text-xs cursor-pointer hover:shadow disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Play size={11} className="fill-gray-500 text-gray-500" />
                     <span>Open All</span>
                   </button>
+
+                  {!collection.parentId && onAddSubcollection && (
+                    <button
+                      id="header-add-subcollection-btn"
+                      onClick={() => onAddSubcollection(collection.id)}
+                      title="Create Subcollection"
+                      className="p-2 border border-[#EBEBEB] dark:border-[#282b36] rounded-lg bg-white/90 dark:bg-[#1a1c24] hover:bg-white dark:hover:bg-[#242733] text-gray-500 dark:text-[#d1d5db] hover:text-gray-800 dark:hover:text-white shadow-sm transition-all cursor-pointer"
+                    >
+                      <FolderOpen size={12.5} />
+                    </button>
+                  )}
                   
                   <button
                     id="edit-collection-action-btn"
@@ -774,379 +790,464 @@ export const MainArea: React.FC<MainAreaProps> = ({
                   </div>
                 )}
 
-                {/* Collection Notes & Context Section */}
-                <div className="p-6 pb-0" id="collection-notes-section">
-                  <CollectionNotes
-                    collection={collection}
-                    onUpdateNotes={(newNotes) => onUpdateNotes(collection.id, newNotes)}
-                    isOpenTriggered={notesTriggered}
-                    onClearTrigger={() => setNotesTriggered(false)}
-                  />
-                </div>
-
-                {/* Subcollections Section for root collections */}
-                {!collection.parentId && (
-                  <div className="p-6 pb-0" id="subcollections-section">
-                    {(() => {
-                      const subcollections = allCollections.filter((c) => c.parentId === collection.id);
-                      return (
-                        <div className="space-y-2.5">
-                          <div className="flex items-center justify-between pb-1.5 border-b border-gray-100" id="subcollections-section-header">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider block select-none">
-                                Subcollections ({subcollections.length})
-                              </span>
-                            </div>
-                            {onAddSubcollection && (
-                              <button
-                                type="button"
-                                id="add-subcollection-header-btn"
-                                onClick={() => onAddSubcollection(collection.id)}
-                                className="flex items-center gap-1 text-[11px] font-bold text-gray-600 hover:text-gray-900 bg-gray-100/90 hover:bg-gray-200/80 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.02)]"
-                              >
-                                <Plus size={11} />
-                                <span>New Subcollection</span>
-                              </button>
-                            )}
+                {/* Subcollections Section for root collections (only when subcollections exist) */}
+                {!collection.parentId && (() => {
+                  const subcollections = allCollections.filter((c) => c.parentId === collection.id);
+                  if (subcollections.length === 0) return null;
+                  return (
+                    <div className="p-6 pb-0" id="subcollections-section">
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-gray-100 dark:border-[#222430]" id="subcollections-section-header">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider block select-none">
+                              Subcollections ({subcollections.length})
+                            </span>
                           </div>
-
-                          {subcollections.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5" id="subcollections-grid">
-                              {subcollections.map((sub) => {
-                                const subStatusColor = sub.status === 'Active' ? '#22C55E' : sub.status === 'Parked' ? '#F59E0B' : '#9CA3AF';
-                                return (
-                                  <div
-                                    key={sub.id}
-                                    id={`subcollection-card-${sub.id}`}
-                                    onClick={() => onSelectCollection(sub.id)}
-                                    className="group p-3 rounded-xl border border-[#EBEBEB] hover:border-gray-300 bg-white hover:bg-gray-50/50 shadow-sm transition-all cursor-pointer flex items-center justify-between gap-2"
-                                  >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <div
-                                        style={{
-                                          backgroundColor: `${sub.iconColor}1a`,
-                                          color: sub.iconColor,
-                                        }}
-                                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border border-black/5"
-                                      >
-                                        <LucideIcon name={sub.icon} size={14} />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <h4 className="text-[12.5px] font-bold text-gray-900 truncate leading-tight group-hover:text-black">
-                                          {sub.name}
-                                        </h4>
-                                        <span className="text-[10.5px] text-gray-400 font-medium">
-                                          {sub.tabs.length} {sub.tabs.length === 1 ? 'bookmark' : 'bookmarks'}
-                                        </span>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      <span
-                                        className="w-1.5 h-1.5 rounded-full"
-                                        style={{ backgroundColor: subStatusColor }}
-                                        title={sub.status}
-                                      />
-                                      <ArrowUpRight size={13} className="text-gray-300 group-hover:text-gray-600 transition-colors" />
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div
-                              id="no-subcollections-prompt"
-                              className="p-3 border border-dashed border-gray-200 rounded-xl bg-gray-50/40 flex items-center text-xs text-gray-500"
-                            >
-                              <span className="text-gray-400 text-[11.5px]">No subcollections in this folder yet.</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* Add URLs Form box */}
-                <div className="p-6 pb-0" id="add-urls-block">
-                  {!isAddingUrls ? (
-                    <button
-                      id="expand-add-urls-btn"
-                      onClick={() => setIsAddingUrls(true)}
-                      className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-gray-200 rounded-xl font-bold text-gray-500 hover:text-gray-800 hover:border-gray-400 hover:bg-gray-50 transition-all cursor-pointer"
-                    >
-                      <Plus size={14} />
-                      <span>Add URLs to this collection</span>
-                    </button>
-                  ) : (
-                    <form onSubmit={handleAddUrlsSubmit} className="space-y-2.5 p-4 border border-[#EBEBEB] rounded-xl bg-gray-50/50" id="add-urls-expanded-form">
-                      <div className="flex justify-between items-center" id="add-urls-form-header">
-                        <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-widest block font-bold">
-                          Paste Multiple URLs (One per line)
-                        </span>
-                        <span className="text-[9.5px] font-mono text-gray-400" id="textarea-escape-hint">
-                          Press [Esc] to cancel
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50/60 border border-blue-100/70 rounded-lg text-[11px] text-blue-700 font-medium">
-                        <Sparkles size={12} className="text-blue-500 shrink-0" />
-                        <span>Auto-fetches Titles</span>
-                      </div>
-                      
-                      <textarea
-                        id="clipboard-urls-textarea"
-                        ref={textareaRef}
-                        value={urlsInput}
-                        onChange={(e) => setUrlsInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        rows={4}
-                        placeholder="e.g.&#10;github.com&#10;https://vite.dev&#10;news.ycombinator.com"
-                        className="w-full p-3 bg-white border border-[#EBEBEB] rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300 text-[12px] font-mono leading-relaxed"
-                      />
-
-                      <div className="flex items-center justify-end gap-2" id="add-urls-actions-bottom">
-                        <button
-                          id="cancel-add-urls-btn"
-                          type="button"
-                          onClick={() => {
-                            setIsAddingUrls(false);
-                            setUrlsInput('');
-                          }}
-                          className="px-3.5 py-1.5 font-bold border border-[#EBEBEB] rounded-lg bg-white text-gray-600 hover:bg-gray-50 text-xs transition-all cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          id="submit-add-urls-btn"
-                          type="submit"
-                          disabled={!urlsInput.trim()}
-                          className="px-3.5 py-1.5 font-bold rounded-lg bg-gray-900 text-white hover:bg-gray-800 text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                        >
-                          Add Bookmark
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-
-                {/* Tabs display */}
-                <div className="p-6 space-y-1" id="tab-list-cards-wrapper">
-                  <div className="flex justify-between items-center px-1 pb-2 border-b border-gray-100/80 mb-2" id="tab-list-section-header">
-                    <div className="flex items-center gap-2.5">
-                      {collection.tabs.length > 0 && (
-                        <button
-                          type="button"
-                          id="bulk-select-all-checkbox"
-                          onClick={handleSelectAllNone}
-                          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
-                            collection.tabs.every((t) => selectedTabIds.includes(t.id))
-                              ? 'bg-gray-900 border-gray-900 text-white shadow-sm'
-                              : 'border-gray-200 bg-white hover:border-gray-400'
-                          }`}
-                          title={collection.tabs.every((t) => selectedTabIds.includes(t.id)) ? "Deselect all" : "Select all"}
-                        >
-                          {collection.tabs.every((t) => selectedTabIds.includes(t.id)) && (
-                            <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20">
-                              <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
-                            </svg>
-                          )}
-                        </button>
-                      )}
-                      
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block select-none">
-                        Saved Tabs ({collection.tabs.length})
-                      </span>
-
-                      {collection.tabs.length > 0 && onRefreshAllTabTitles && (
-                        <button
-                          type="button"
-                          onClick={() => onRefreshAllTabTitles(collection.id)}
-                          className="inline-flex items-center gap-1 text-[10.5px] font-bold text-gray-400 hover:text-blue-600 transition-colors ml-1 cursor-pointer"
-                          title="Auto-fetch and refresh web titles for all tabs in this collection"
-                        >
-                          <Sparkles size={11} className="text-blue-500" />
-                          <span>Refresh Titles</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {selectedTabIds.length > 0 && (
-                      <span className="text-[10.5px] font-bold text-gray-500 font-mono select-none">
-                        {selectedTabIds.length} of {collection.tabs.length} selected
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-1 bg-white rounded-xl overflow-hidden" id="loaded-tabs-container">
-                    {collection.tabs.map((tab) => {
-                      const isOver = dropIndicator?.id === tab.id;
-                      const isDragged = draggedTabId === tab.id;
-                      const isSelected = selectedTabIds.includes(tab.id);
-
-                      return (
-                        <div
-                          key={tab.id}
-                          id={`tab-row-${tab.id}`}
-                          draggable
-                          onDragStart={(e) => handleTabDragStart(e, tab.id)}
-                          onDragEnd={handleTabDragEnd}
-                          onDragOver={(e) => handleTabDragOver(e, tab.id)}
-                          onDragLeave={handleTabDragLeave}
-                          onDrop={(e) => handleTabDrop(e, tab.id)}
-                          className={`group relative flex items-center justify-between px-3 py-1.5 rounded-lg border border-transparent hover:bg-gray-50/80 cursor-grab select-none transition-all ${
-                            isSelected ? 'bg-gray-50/70 shadow-none' : ''
-                          } ${
-                            isDragged ? 'opacity-30 border-dashed border-gray-300' : ''
-                          }`}
-                        >
-                          {/* Reorder Drop Indicator Top line */}
-                          {isOver && dropIndicator?.position === 'before' && (
-                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-300 rounded-full z-10 animate-pulse" id="tab-drop-indicator-top" />
-                          )}
-
-                          {/* Icon, Checkbox & Details */}
-                          <div className="flex items-center gap-2.5 overflow-hidden flex-1" id="tab-meta-anchor">
-                            {/* Individual Row Checkbox */}
+                          {onAddSubcollection && (
                             <button
                               type="button"
-                              id={`select-tab-checkbox-${tab.id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleSelectTab(tab.id);
-                              }}
-                              className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
-                                isSelected
-                                  ? 'bg-gray-900 border-gray-900 text-white shadow-sm'
-                                  : 'border-gray-200 bg-white hover:border-gray-400 group-hover:border-gray-300'
-                              }`}
-                              title={isSelected ? "Deselect bookmark" : "Select bookmark"}
+                              id="add-subcollection-header-btn"
+                              onClick={() => onAddSubcollection(collection.id)}
+                              className="flex items-center gap-1 text-[11px] font-bold text-gray-600 hover:text-gray-900 bg-gray-100/90 hover:bg-gray-200/80 px-2.5 py-1 rounded-md transition-all cursor-pointer shadow-[0_1px_1px_rgba(0,0,0,0.02)]"
                             >
-                              {isSelected && (
-                                <svg className="w-2.5 h-2.5 fill-current scale-75" viewBox="0 0 20 20">
+                              <Plus size={11} />
+                              <span>New Subcollection</span>
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5" id="subcollections-grid">
+                          {subcollections.map((sub) => {
+                            const subStatusColor = sub.status === 'Active' ? '#22C55E' : sub.status === 'Parked' ? '#F59E0B' : '#9CA3AF';
+                            return (
+                              <div
+                                key={sub.id}
+                                id={`subcollection-card-${sub.id}`}
+                                onClick={() => onSelectCollection(sub.id)}
+                                className="group p-3 rounded-xl border border-[#EBEBEB] hover:border-gray-300 bg-white hover:bg-gray-50/50 shadow-sm transition-all cursor-pointer flex items-center justify-between gap-2"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div
+                                    style={{
+                                      backgroundColor: `${sub.iconColor}1a`,
+                                      color: sub.iconColor,
+                                    }}
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border border-black/5"
+                                  >
+                                    <LucideIcon name={sub.icon} size={14} />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="text-[12.5px] font-bold text-gray-900 truncate leading-tight group-hover:text-black">
+                                      {sub.name}
+                                    </h4>
+                                    <span className="text-[10.5px] text-gray-400 font-medium">
+                                      {sub.tabs.length} {sub.tabs.length === 1 ? 'bookmark' : 'bookmarks'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full"
+                                    style={{ backgroundColor: subStatusColor }}
+                                    title={sub.status}
+                                  />
+                                  <ArrowUpRight size={13} className="text-gray-300 group-hover:text-gray-600 transition-colors" />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Case 1: UNIFIED EMPTY STATE - Neither bookmarks nor notes exist, and not currently adding URLs or writing notes */}
+                {collection.tabs.length === 0 && !(collection.notes && collection.notes.trim()) && !isAddingUrls && !isWritingNotes && !notesTriggered ? (
+                  <div className="p-8 md:p-12 flex flex-col items-center justify-center min-h-[360px] text-center" id="unified-collection-empty-state">
+                    <div
+                      style={{
+                        backgroundColor: `${collection.iconColor}15`,
+                        borderColor: `${collection.iconColor}35`,
+                        color: collection.iconColor,
+                      }}
+                      className="w-16 h-16 rounded-2xl border flex items-center justify-center mb-4 shadow-xs"
+                      id="empty-state-icon-box"
+                    >
+                      <LucideIcon name={collection.icon} size={28} />
+                    </div>
+
+                    <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1.5 tracking-tight" id="empty-state-title">
+                      {collection.name} is empty
+                    </h2>
+
+                    <p className="text-[12.5px] text-gray-500 dark:text-gray-400 max-w-sm mb-6 leading-relaxed" id="empty-state-subtitle">
+                      Save links, articles, and favorite websites, or write notes, checklists, and project documentation.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-md" id="empty-state-action-cards">
+                      <button
+                        type="button"
+                        id="empty-action-add-urls"
+                        onClick={() => setIsAddingUrls(true)}
+                        className="flex items-center gap-3 p-3.5 rounded-xl border border-gray-200 dark:border-[#282b39] bg-white dark:bg-[#16171e] hover:border-blue-400 dark:hover:border-blue-500/50 hover:shadow-sm transition-all text-left group cursor-pointer"
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <Plus size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[12.5px] font-bold text-gray-800 dark:text-gray-200 block group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            Add Bookmarks
+                          </span>
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block truncate">
+                            Paste links or URLs
+                          </span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        id="empty-action-add-notes"
+                        onClick={() => {
+                          setIsWritingNotes(true);
+                          setNotesTriggered(true);
+                        }}
+                        className="flex items-center gap-3 p-3.5 rounded-xl border border-gray-200 dark:border-[#282b39] bg-white dark:bg-[#16171e] hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-sm transition-all text-left group cursor-pointer"
+                      >
+                        <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          <StickyNote size={17} />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[12.5px] font-bold text-gray-800 dark:text-gray-200 block group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                            Write Notes
+                          </span>
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 block truncate">
+                            Checklists & markdown
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+
+                    {!collection.parentId && onAddSubcollection && (
+                      <div className="mt-5">
+                        <button
+                          type="button"
+                          id="empty-action-add-subcollection"
+                          onClick={() => onAddSubcollection(collection.id)}
+                          className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                        >
+                          <FolderOpen size={13} />
+                          <span>Or create a nested subcollection folder</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {/* Collection Notes Section */}
+                    <div className="p-6 pb-0" id="collection-notes-section">
+                      <CollectionNotes
+                        collection={collection}
+                        onUpdateNotes={(newNotes) => onUpdateNotes(collection.id, newNotes)}
+                        isOpenTriggered={notesTriggered}
+                        onClearTrigger={() => setNotesTriggered(false)}
+                        onEditingChange={(editing) => setIsWritingNotes(editing)}
+                      />
+                    </div>
+
+                    {/* Add URLs Form box (when isAddingUrls is open or bookmarks exist) */}
+                    {(isAddingUrls || collection.tabs.length > 0) && (
+                      <div className="p-6 pb-0" id="add-urls-block">
+                        {!isAddingUrls ? (
+                          <button
+                            id="expand-add-urls-btn"
+                            onClick={() => setIsAddingUrls(true)}
+                            className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-gray-200 rounded-xl font-bold text-gray-500 hover:text-gray-800 hover:border-gray-400 hover:bg-gray-50 transition-all cursor-pointer"
+                          >
+                            <Plus size={14} />
+                            <span>Add URLs to this collection</span>
+                          </button>
+                        ) : (
+                          <form onSubmit={handleAddUrlsSubmit} className="space-y-2.5 p-4 border border-[#EBEBEB] rounded-xl bg-gray-50/50" id="add-urls-expanded-form">
+                            <div className="flex justify-between items-center" id="add-urls-form-header">
+                              <span className="text-[11px] font-extrabold text-gray-500 uppercase tracking-widest block font-bold">
+                                Paste Multiple URLs (One per line)
+                              </span>
+                              <span className="text-[9.5px] font-mono text-gray-400" id="textarea-escape-hint">
+                                Press [Esc] to cancel
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50/60 border border-blue-100/70 rounded-lg text-[11px] text-blue-700 font-medium">
+                              <Sparkles size={12} className="text-blue-500 shrink-0" />
+                              <span>Auto-fetches Titles</span>
+                            </div>
+                            
+                            <textarea
+                              id="clipboard-urls-textarea"
+                              ref={textareaRef}
+                              value={urlsInput}
+                              onChange={(e) => setUrlsInput(e.target.value)}
+                              onKeyDown={handleKeyDown}
+                              rows={4}
+                              placeholder="e.g.&#10;github.com&#10;https://vite.dev&#10;news.ycombinator.com"
+                              className="w-full p-3 bg-white border border-[#EBEBEB] rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-300 text-[12px] font-mono leading-relaxed"
+                            />
+                            <div className="flex items-center justify-end gap-2" id="add-urls-actions-bottom">
+                              <button
+                                id="cancel-add-urls-btn"
+                                type="button"
+                                onClick={() => {
+                                  setIsAddingUrls(false);
+                                  setUrlsInput('');
+                                }}
+                                className="px-3.5 py-1.5 font-bold border border-[#EBEBEB] rounded-lg bg-white text-gray-600 hover:bg-gray-50 text-xs transition-all cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                id="submit-add-urls-btn"
+                                type="submit"
+                                disabled={!urlsInput.trim()}
+                                className="px-3.5 py-1.5 font-bold rounded-lg bg-gray-900 text-white hover:bg-gray-800 text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                Add Bookmark
+                              </button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bookmarks Section */}
+                    {collection.tabs.length > 0 ? (
+                      <div className="p-6 space-y-1" id="tab-list-cards-wrapper">
+                        <div className="flex justify-between items-center px-1 pb-2 border-b border-gray-100/80 mb-2" id="tab-list-section-header">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              id="bulk-select-all-checkbox"
+                              onClick={handleSelectAllNone}
+                              className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                                collection.tabs.every((t) => selectedTabIds.includes(t.id))
+                                  ? 'bg-gray-900 border-gray-900 text-white shadow-sm'
+                                  : 'border-gray-200 bg-white hover:border-gray-400'
+                              }`}
+                              title={collection.tabs.every((t) => selectedTabIds.includes(t.id)) ? "Deselect all" : "Select all"}
+                            >
+                              {collection.tabs.every((t) => selectedTabIds.includes(t.id)) && (
+                                <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20">
                                   <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
                                 </svg>
                               )}
                             </button>
-
-                            <TabFavicon
-                              url={tab.url}
-                              favicon={tab.favicon}
-                              id={`tab-favicon-${tab.id}`}
-                              className="w-3.5 h-3.5 object-contain shrink-0 rounded-sm cursor-grab"
-                            />
-
-                            <div className="flex items-baseline gap-2 overflow-hidden flex-1 cursor-grab" id="tab-titles-wrapper">
-                              <span
-                                className="font-bold text-gray-800 text-[12.5px] truncate max-w-[280px] hover:text-black cursor-pointer"
-                                id="tab-main-title"
-                                title="Double-click to rename"
-                                onDoubleClick={(e) => {
-                                  e.stopPropagation();
-                                  setTabToEdit({ tab, collectionId: collection.id });
-                                }}
-                              >
-                                {tab.title}
-                              </span>
-                              {tab.isLoadingTitle && (
-                                <span className="inline-flex items-center gap-1 text-[9.5px] text-blue-500 font-medium px-1.5 py-0.5 rounded bg-blue-50/70 border border-blue-100/60 animate-pulse shrink-0">
-                                  <Loader2 size={9.5} className="animate-spin text-blue-500" />
-                                  <span>fetching title...</span>
-                                </span>
-                              )}
-                              <span
-                                className="font-mono text-[11px] text-gray-400 truncate max-w-[240px] hover:text-gray-600 cursor-pointer"
-                                id="tab-truncated-url"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSingleTabOpen(tab.url);
-                                }}
-                              >
-                                {tab.url.replace(/^https?:\/\//, '')}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Actions & Dates added */}
-                          <div className="flex items-center gap-3 shrink-0 ml-4" id="tab-right-actions-group">
-                            <span className="text-[11px] text-gray-400 group-hover:hidden select-none transition-opacity" id="tab-added-ago">
-                              {new Date(tab.addedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block select-none">
+                              Saved Tabs ({collection.tabs.length})
                             </span>
-
-                            <div className="hidden group-hover:flex items-center gap-1 bg-white pl-2 transition-all" id="tab-hover-actions">
+                            {onRefreshAllTabTitles && (
                               <button
-                                id={`rename-tab-btn-${tab.id}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTabToEdit({ tab, collectionId: collection.id });
-                                }}
-                                title="Rename / Edit Link"
-                                className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                                type="button"
+                                onClick={() => onRefreshAllTabTitles(collection.id)}
+                                className="inline-flex items-center gap-1 text-[10.5px] font-bold text-gray-400 hover:text-blue-600 transition-colors ml-1 cursor-pointer"
+                                title="Auto-fetch and refresh web titles for all tabs in this collection"
                               >
-                                <Edit2 size={12.5} />
+                                <Sparkles size={11} className="text-blue-500" />
+                                <span>Refresh Titles</span>
                               </button>
-                              {onRefreshTabTitle && (
-                                <button
-                                  id={`refresh-title-btn-${tab.id}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onRefreshTabTitle(collection.id, tab.id);
-                                  }}
-                                  title="Auto-fetch latest web title (YouTube, Google Docs, etc.)"
-                                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
-                                >
-                                  <Sparkles size={12.5} />
-                                </button>
-                              )}
-                              <button
-                                id={`open-link-icon-btn-${tab.id}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSingleTabOpen(tab.url);
-                                }}
-                                title="Open Tab in New Window"
-                                className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
-                              >
-                                <ArrowUpRight size={13} />
-                              </button>
-                              <button
-                                id={`delete-tab-icon-btn-${tab.id}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTabToDelete(tab);
-                                }}
-                                title="Remove Bookmark"
-                                className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
+                            )}
                           </div>
-
-                          {/* Reorder Drop Indicator Bottom line */}
-                          {isOver && dropIndicator?.position === 'after' && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-300 rounded-full z-10 animate-pulse" id="tab-drop-indicator-bottom" />
+                          {selectedTabIds.length > 0 && (
+                            <span className="text-[10.5px] font-bold text-gray-500 font-mono select-none">
+                              {selectedTabIds.length} of {collection.tabs.length} selected
+                            </span>
                           )}
                         </div>
-                      );
-                    })}
+                        <div className="space-y-1 bg-white rounded-xl overflow-hidden" id="loaded-tabs-container">
+                          {collection.tabs.map((tab) => {
+                            const isOver = dropIndicator?.id === tab.id;
+                            const isDragged = draggedTabId === tab.id;
+                            const isSelected = selectedTabIds.includes(tab.id);
+                            return (
+                              <div
+                                key={tab.id}
+                                id={`tab-row-${tab.id}`}
+                                draggable
+                                onDragStart={(e) => handleTabDragStart(e, tab.id)}
+                                onDragEnd={handleTabDragEnd}
+                                onDragOver={(e) => handleTabDragOver(e, tab.id)}
+                                onDragLeave={handleTabDragLeave}
+                                onDrop={(e) => handleTabDrop(e, tab.id)}
+                                className={`group relative flex items-center justify-between px-3 py-1.5 rounded-lg border border-transparent hover:bg-gray-50/80 cursor-grab select-none transition-all ${
+                                  isSelected ? 'bg-gray-50/70 shadow-none' : ''
+                                } ${
+                                  isDragged ? 'opacity-30 border-dashed border-gray-300' : ''
+                                }`}
+                              >
+                                {/* Reorder Drop Indicator Top line */}
+                                {isOver && dropIndicator?.position === 'before' && (
+                                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-300 rounded-full z-10 animate-pulse" id="tab-drop-indicator-top" />
+                                )}
 
-                    {collection.tabs.length === 0 && (
-                      <div className="py-12 border border-[#EBEBEB] rounded-xl bg-gray-50/50 flex flex-col items-center justify-center p-4 text-center text-gray-400" id="collection-tabs-empty">
-                        <p className="font-bold text-gray-600 text-[12.5px]" id="no-tabs-found">No Bookmarks Found</p>
-                        <p className="text-[11px] text-gray-400 mt-1 max-w-xs leading-relaxed">
-                          Paste list of links in the box above to starts managing your resources!
-                        </p>
+                                {/* Icon, Checkbox & Details */}
+                                <div className="flex items-center gap-2.5 overflow-hidden flex-1" id="tab-meta-anchor">
+                                  {/* Individual Row Checkbox */}
+                                  <button
+                                    type="button"
+                                    id={`select-tab-checkbox-${tab.id}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleSelectTab(tab.id);
+                                    }}
+                                    className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-gray-900 border-gray-900 text-white shadow-sm'
+                                        : 'border-gray-200 bg-white hover:border-gray-400 group-hover:border-gray-300'
+                                    }`}
+                                    title={isSelected ? "Deselect bookmark" : "Select bookmark"}
+                                  >
+                                    {isSelected && (
+                                      <svg className="w-2.5 h-2.5 fill-current scale-75" viewBox="0 0 20 20">
+                                        <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                                      </svg>
+                                    )}
+                                  </button>
+
+                                  <TabFavicon
+                                    url={tab.url}
+                                    favicon={tab.favicon}
+                                    id={`tab-favicon-${tab.id}`}
+                                    className="w-3.5 h-3.5 object-contain shrink-0 rounded-sm cursor-grab"
+                                  />
+                                  <div className="flex items-baseline gap-2 overflow-hidden flex-1 cursor-grab" id="tab-titles-wrapper">
+                                    <span
+                                      className="font-bold text-gray-800 text-[12.5px] truncate max-w-[280px] hover:text-black cursor-pointer"
+                                      id="tab-main-title"
+                                      title="Double-click to rename"
+                                      onDoubleClick={(e) => {
+                                        e.stopPropagation();
+                                        setTabToEdit({ tab, collectionId: collection.id });
+                                      }}
+                                    >
+                                      {tab.title}
+                                    </span>
+                                    <span
+                                      className="text-gray-400 text-[11px] truncate cursor-pointer hover:underline"
+                                      id="tab-domain-preview"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSingleTabOpen(tab.url);
+                                      }}
+                                    >
+                                      {tab.url.replace(/^https?:\/\//, '')}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Actions & Dates added */}
+                                <div className="flex items-center gap-3 shrink-0 ml-4" id="tab-right-actions-group">
+                                  <span className="text-[11px] text-gray-400 group-hover:hidden select-none transition-opacity" id="tab-added-ago">
+                                    {new Date(tab.addedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                  </span>
+
+                                  <div className="hidden group-hover:flex items-center gap-1 bg-white pl-2 transition-all" id="tab-hover-actions">
+                                    <button
+                                      id={`rename-tab-btn-${tab.id}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTabToEdit({ tab, collectionId: collection.id });
+                                      }}
+                                      title="Rename / Edit Link"
+                                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                                    >
+                                      <Edit2 size={12.5} />
+                                    </button>
+
+                                    {onRefreshTabTitle && (
+                                      <button
+                                        id={`refresh-title-btn-${tab.id}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onRefreshTabTitle(collection.id, tab.id);
+                                        }}
+                                        title="Auto-fetch latest web title (YouTube, Google Docs, etc.)"
+                                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
+                                      >
+                                        <Sparkles size={12.5} />
+                                      </button>
+                                    )}
+
+                                    <button
+                                      id={`open-link-icon-btn-${tab.id}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSingleTabOpen(tab.url);
+                                      }}
+                                      title="Open Tab in New Window"
+                                      className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+                                    >
+                                      <ArrowUpRight size={13} />
+                                    </button>
+
+                                    <button
+                                      id={`delete-tab-icon-btn-${tab.id}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTabToDelete(tab);
+                                      }}
+                                      title="Remove Bookmark"
+                                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Reorder Drop Indicator Bottom line */}
+                                {isOver && dropIndicator?.position === 'after' && (
+                                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-300 rounded-full z-10 animate-pulse" id="tab-drop-indicator-bottom" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
+                    ) : (
+                      /* When collection.tabs.length === 0 but notes exist and not adding URLs */
+                      !isAddingUrls && (
+                        <div className="p-6 pt-3" id="collection-tabs-empty-section">
+                          <div
+                            className="py-10 border border-dashed border-gray-200 dark:border-[#282b39] rounded-xl bg-gray-50/50 dark:bg-[#16171e]/50 flex flex-col items-center justify-center p-4 text-center transition-all"
+                            id="collection-tabs-empty"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-[#20222e] text-gray-400 dark:text-gray-500 flex items-center justify-center mb-2.5">
+                              <ArrowUpRight size={18} />
+                            </div>
+                            <p className="font-bold text-gray-700 dark:text-gray-200 text-[13px]" id="no-tabs-found">
+                              No Bookmarks Saved Yet
+                            </p>
+                            <p className="text-[11.5px] text-gray-400 dark:text-gray-500 mt-1 max-w-xs leading-relaxed mb-3.5">
+                              Paste links and websites to keep them organized alongside your notes.
+                            </p>
+                            <button
+                              type="button"
+                              id="empty-tabs-add-btn"
+                              onClick={() => setIsAddingUrls(true)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-all cursor-pointer shadow-xs"
+                            >
+                              <Plus size={13} />
+                              <span>Add Bookmarks</span>
+                            </button>
+                          </div>
+                        </div>
+                      )
                     )}
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             </>
           )}
         </>
       )}
-
       {/* Confirmation Modal for Bulk Deletion */}
       <ConfirmationModal
         isOpen={isConfirmingDeleteSelected}
