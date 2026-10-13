@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Star, ChevronRight, ChevronDown, Plus } from 'lucide-react';
+import { Star, ChevronRight, ChevronDown, Plus, Sun, Moon } from 'lucide-react';
 import { Collection, StatusType } from '../types';
 import { LucideIcon } from './LucideIcon';
 
@@ -23,6 +23,8 @@ interface SidebarProps {
   onExportBackup: () => void;
   onImportBackup: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRequestHarden: () => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -40,6 +42,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onExportBackup,
   onImportBackup,
   onRequestHarden,
+  theme = 'light',
+  onToggleTheme,
 }) => {
   // Drag states local to sidebar item
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -235,7 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             style={{ color: sub.iconColor }}
             className="flex items-center justify-center shrink-0 w-3.5 h-3.5"
           >
-            <LucideIcon name={sub.icon} size={12.5} />
+            <LucideIcon name={sub.icon} size={12.5} style={{ color: sub.iconColor }} />
           </span>
           <span className="truncate tracking-tight leading-normal" id={`subcol-name-${sub.id}`}>
             {sub.name}
@@ -332,7 +336,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               style={{ color: rootCol.iconColor }}
               className="flex items-center justify-center shrink-0 w-4 h-4"
             >
-              <LucideIcon name={rootCol.icon} size={14} />
+              <LucideIcon name={rootCol.icon} size={14} style={{ color: rootCol.iconColor }} />
             </span>
             <span className="truncate text-[12.5px] tracking-tight leading-normal py-0.5" id="row-collection-name">
               {rootCol.name}
@@ -425,26 +429,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
       className="w-[210px] bg-[#F7F7F5] h-screen flex flex-col shrink-0 border-r border-[#E5E5E0] text-[13px] overflow-hidden"
     >
       {/* Brand Header */}
-      <div className="h-13 px-4 flex items-center gap-2 border-b border-[#EBEBEB] shrink-0" id="sidebar-brand-header">
-        {/* Custom Mini Folder Stack Logomark */}
-        <div 
-          id="foldr-logo-container"
-          className="w-6 h-6 rounded-md bg-black flex items-center justify-center shadow-sm relative overflow-hidden"
-        >
-          <svg
-            viewBox="0 0 100 100"
-            className="w-4.5 h-4.5 fill-white"
-            id="foldr-logo-svg"
+      <div className="h-13 px-4 flex items-center justify-between border-b border-[#EBEBEB] shrink-0" id="sidebar-brand-header">
+        <div className="flex items-center gap-2">
+          {/* Custom Mini Folder Stack Logomark - Always identical in light & dark */}
+          <div 
+            id="foldr-logo-container"
+            className="w-6 h-6 rounded-md bg-black flex items-center justify-center shadow-sm relative overflow-hidden"
           >
-            {/* Top Wedge */}
-            <path d="M 72.5 15.75 A 45.5 45.5 0 0 0 26.5 61.25 L 72.5 61.25 Z" />
-            {/* Bottom Wedge */}
-            <path d="M 26.5 61.25 A 23 23 0 0 1 49.5 84.25 L 26.5 84.25 Z" />
-          </svg>
+            <svg
+              viewBox="0 0 100 100"
+              className="w-4.5 h-4.5 fill-white"
+              id="foldr-logo-svg"
+            >
+              {/* Top Wedge */}
+              <path d="M 72.5 15.75 A 45.5 45.5 0 0 0 26.5 61.25 L 72.5 61.25 Z" />
+              {/* Bottom Wedge */}
+              <path d="M 26.5 61.25 A 23 23 0 0 1 49.5 84.25 L 26.5 84.25 Z" />
+            </svg>
+          </div>
+          <span className="font-extrabold text-[15px] text-gray-900 tracking-tight" id="brand-name">
+            Foldr
+          </span>
         </div>
-        <span className="font-extrabold text-[15px] text-gray-900 tracking-tight" id="brand-name">
-          Foldr
-        </span>
+
+        {/* Light / Dark Mode Toggle Button on right side */}
+        <button
+          type="button"
+          id="theme-mode-toggle-btn"
+          onClick={onToggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="w-7 h-7 rounded-md flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-200/60 transition-colors cursor-pointer focus:outline-none"
+        >
+          {theme === 'dark' ? (
+            <Sun size={14} className="text-amber-400 transition-transform duration-200 hover:rotate-45" />
+          ) : (
+            <Moon size={14} className="text-gray-600 transition-transform duration-200 hover:-rotate-12" />
+          )}
+        </button>
       </div>
 
       {/* Solid Black Top New Collection Button as requested */}
@@ -493,7 +515,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Starred Section */}
         <div className="space-y-1" id="starred-collections-section">
-          <div className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+          <div id="starred-section-header" className="flex items-center gap-1.5 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
             <Star size={10} className="fill-gray-400 text-gray-400" />
             <span>Starred</span>
           </div>
@@ -511,7 +533,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Regular Collections Section */}
         <div className="space-y-1" id="general-collections-section">
-          <span className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+          <span id="collections-section-header" className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
             Collections
           </span>
           <div className="space-y-0.5" id="regular-rows-list">

@@ -654,7 +654,7 @@ export const MainArea: React.FC<MainAreaProps> = ({
                     })()}
 
                     <div className="flex items-center gap-2" id="header-title-pill-wrapper">
-                      <h1 className="font-extrabold text-[15px] text-gray-900 leading-tight" id="header-collection-name">
+                      <h1 className="font-extrabold text-[15px] text-gray-900 dark:text-white leading-tight" id="header-collection-name">
                         {collection.name}
                       </h1>
                       

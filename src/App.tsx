@@ -12,8 +12,9 @@ import { CollectionModal } from './components/CollectionModal';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { getSmartFallbackTitle, fetchUrlMetadata, normalizeUrl, getDomainFavicon } from './utils/urlMetadata';
 
-// Local storage key helper
+// Local storage key helpers
 const STORAGE_KEY = 'foldr_archiver_collections_v1';
+const THEME_STORAGE_KEY = 'foldr_theme_mode_v1';
 
 export default function App() {
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -22,7 +23,34 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPersisted, setIsPersisted] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === 'dark' || saved === 'light') return saved;
+    }
+    return 'light';
+  });
+
+  // Apply theme class and data-theme attribute to documentElement whenever theme changes
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // ignore localstorage errors
+    }
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
@@ -727,6 +755,8 @@ export default function App() {
         onExportBackup={handleExportBackup}
         onImportBackup={handleImportBackup}
         onRequestHarden={requestHardenedStorage}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Flexible Right Main Content Viewport */}

@@ -8,7 +8,7 @@ import {
   Bookmark, Book, Briefcase, Calendar, Camera, Clock, Code, Coffee, Compass, Database, File, FileText, Folder, Globe, Heart, Home, Image, Inbox, Layers, Layout, Link, List, Mail, Map, MessageCircle, Monitor, Music, Package, PenTool, Phone, Rocket, Search, Settings, Share2, ShoppingBag, ShoppingCart, Star, Tag, Target, Terminal, Trash, TrendingUp, Tv, Upload, User, Video, Zap, Archive, Award, Bell, Box, Brush, Bug, Building, BarChart, Activity, CheckCircle, Cpu, Clipboard, Cloud, Crown, Diamond, Download, Edit, Eye, Feather, Film, Filter, Flag, FlaskConical, Gamepad, Gift, GraduationCap, Hammer, Headphones, Key, Laptop, Leaf, Lightbulb, Lock, Magnet, MapPin, Megaphone, Moon, Mountain, Palette, Send, Paperclip, Pen, Plane, Plug, Printer, Puzzle, Radio, RefreshCw, Shield, Signal, Smile, Speaker, Sun, Thermometer, Ticket, Timer, Trees, Trophy, Truck, Umbrella, Wallet, Watch, Wifi, Wind, Wrench, XCircle
 } from 'lucide-react';
 
-export const ICON_MAP: Record<string, React.ComponentType<{ className?: string; size?: number; style?: React.CSSProperties }>> = {
+export const ICON_MAP: Record<string, React.ComponentType<{ className?: string; size?: number; style?: React.CSSProperties; color?: string }>> = {
   bookmark: Bookmark,
   book: Book,
   briefcase: Briefcase,
@@ -132,9 +132,18 @@ interface LucideIconProps {
   className?: string;
   size?: number;
   style?: React.CSSProperties;
+  color?: string;
 }
 
-export const LucideIcon: React.FC<LucideIconProps> = ({ name, className, size = 14, style }) => {
+export const LucideIcon: React.FC<LucideIconProps> = ({ name, className, size = 14, style, color }) => {
   const IconComponent = ICON_MAP[name] || Folder;
-  return <IconComponent className={className} size={size} style={style} />;
+  return (
+    <IconComponent 
+      className={className} 
+      size={size} 
+      style={color ? { color, stroke: color, ...style } : style} 
+      color={color} 
+    />
+  );
 };
+

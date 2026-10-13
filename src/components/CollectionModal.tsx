@@ -171,7 +171,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fade-in">
       <div 
-        id="collection-modal-container"
+        id="collection-modal-card"
         className="relative w-[360px] max-h-[92vh] flex flex-col bg-white rounded-xl shadow-xl overflow-hidden border border-[#EBEBEB] text-[13px] leading-relaxed"
         onClick={(e) => e.stopPropagation()}
       >
@@ -301,9 +301,17 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
               <label className="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">
                 Select Icon
               </label>
-              <span className="text-[10px] font-mono text-gray-400 capitalize" id="selected-icon-label">
-                &quot;{selectedIcon}&quot;
-              </span>
+              <div className="flex items-center gap-1.5" id="selected-icon-preview-box">
+                <span 
+                  className="w-5 h-5 flex items-center justify-center rounded border transition-colors"
+                  style={{ borderColor: iconColor, backgroundColor: `${iconColor}20`, color: iconColor }}
+                >
+                  <LucideIcon name={selectedIcon} size={12} color={iconColor} style={{ color: iconColor, stroke: iconColor }} />
+                </span>
+                <span className="text-[10px] font-mono text-gray-400 capitalize" id="selected-icon-label">
+                  &quot;{selectedIcon}&quot;
+                </span>
+              </div>
             </div>
             
             {/* Search Input for Icons */}
@@ -333,18 +341,24 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({
                     type="button"
                     onClick={() => setSelectedIcon(iconName)}
                     title={iconName}
+                    data-selected={isSelected ? "true" : undefined}
                     style={{
-                      borderColor: isSelected ? iconColor : '',
-                      backgroundColor: isSelected ? `${iconColor}15` : '',
-                      color: isSelected ? iconColor : '',
+                      borderColor: isSelected ? iconColor : 'transparent',
+                      backgroundColor: isSelected ? `${iconColor}20` : undefined,
+                      color: isSelected ? iconColor : undefined,
                     }}
-                    className={`flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-200 hover:text-gray-800 border transition-all ${
+                    className={`flex items-center justify-center w-8 h-8 rounded-lg border transition-all ${
                       isSelected
-                        ? 'bg-white font-semibold border-[1.5px]'
-                        : 'border-transparent bg-transparent'
+                        ? 'font-semibold border-[1.5px]'
+                        : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800 border-transparent bg-transparent'
                     }`}
                   >
-                    <LucideIcon name={iconName} size={15} />
+                    <LucideIcon 
+                      name={iconName} 
+                      size={15} 
+                      color={isSelected ? iconColor : undefined}
+                      style={isSelected ? { color: iconColor, stroke: iconColor } : undefined}
+                    />
                   </button>
                 );
               })}
