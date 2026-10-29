@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Collection, Tab, StatusType } from './types';
+import { Collection, Tab, StatusType, CollectionSection } from './types';
 import { Sidebar } from './components/Sidebar';
 import { MainArea } from './components/MainArea';
 import { CollectionModal } from './components/CollectionModal';
@@ -272,8 +272,8 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  // Add tabs with instant smart fallback titles and background rich title auto-fetching
-  const handleAddTabs = (collectionId: string, urlsStr: string) => {
+  // Add tabs with instant smart fallback titles and background rich title auto-fetching (with optional sectionId)
+  const handleAddTabs = (collectionId: string, urlsStr: string, targetSectionId?: string | null) => {
     const lines = urlsStr.split('\n').map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return;
 
@@ -294,6 +294,7 @@ export default function App() {
         favicon: getDomainFavicon(cleanUrl),
         addedAt: new Date().toISOString(),
         isLoadingTitle: true,
+        sectionId: targetSectionId || undefined,
       };
     });
 
@@ -356,11 +357,118 @@ export default function App() {
     });
   };
 
+  // Sections management inside collections for links
+  const handleAddSection = (collectionId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const newSection: CollectionSection = {
+      id: `sec-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name: trimmed,
+      createdAt: new Date().toISOString(),
+    };
+
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === collectionId) {
+          const currentSections = col.sections || [];
+          return {
+            ...col,
+            sections: [...currentSections, newSection],
+            lastOpenedAt: new Date().toISOString(),
+          };
+        }
+        return col;
+      })
+    );
+    showToast(`Created section "${trimmed}"!`, "success");
+  };
+
+  const handleRenameSection = (collectionId: string, sectionId: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === collectionId) {
+          const updatedSections = (col.sections || []).map((sec) =>
+            sec.id === sectionId ? { ...sec, name: trimmed } : sec
+          );
+          return {
+            ...col,
+            sections: updatedSections,
+            lastOpenedAt: new Date().toISOString(),
+          };
+        }
+        return col;
+      })
+    );
+    showToast(`Section renamed to "${trimmed}"`, "success");
+  };
+
+  const handleDeleteSection = (collectionId: string, sectionId: string) => {
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === collectionId) {
+          const updatedSections = (col.sections || []).filter((sec) => sec.id !== sectionId);
+          // Preserve tabs by moving them to unsectioned (null/undefined) instead of deleting them
+          const updatedTabs = col.tabs.map((t) =>
+            t.sectionId === sectionId ? { ...t, sectionId: undefined } : t
+          );
+          return {
+            ...col,
+            sections: updatedSections,
+            tabs: updatedTabs,
+            lastOpenedAt: new Date().toISOString(),
+          };
+        }
+        return col;
+      })
+    );
+    showToast(`Section deleted. Bookmarks were kept in general view.`, "info");
+  };
+
+  const handleMoveTabToSection = (collectionId: string, tabId: string, targetSectionId: string | null) => {
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === collectionId) {
+          return {
+            ...col,
+            tabs: col.tabs.map((t) =>
+              t.id === tabId ? { ...t, sectionId: targetSectionId || undefined } : t
+            ),
+            lastOpenedAt: new Date().toISOString(),
+          };
+        }
+        return col;
+      })
+    );
+    showToast(`Bookmark moved to section.`, "success");
+  };
+
+  const handleBulkMoveTabsToSection = (collectionId: string, tabIds: string[], targetSectionId: string | null) => {
+    updateCollections((prev) =>
+      prev.map((col) => {
+        if (col.id === collectionId) {
+          return {
+            ...col,
+            tabs: col.tabs.map((t) =>
+              tabIds.includes(t.id) ? { ...t, sectionId: targetSectionId || undefined } : t
+            ),
+            lastOpenedAt: new Date().toISOString(),
+          };
+        }
+        return col;
+      })
+    );
+    showToast(`Moved ${tabIds.length} bookmark(s) to section.`, "success");
+  };
+
   // Rename or edit an existing tab bookmark
   const handleUpdateTab = (
     collectionId: string,
     tabId: string,
-    updates: { title?: string; url?: string; favicon?: string }
+    updates: { title?: string; url?: string; favicon?: string; sectionId?: string | null }
   ) => {
     updateCollections((prev) =>
       prev.map((col) => {
@@ -525,13 +633,20 @@ export default function App() {
           const indexTarget = col.tabs.findIndex((t) => t.id === targetTabId);
           if (indexSource === -1 || indexTarget === -1) return col;
 
+          const targetTab = col.tabs[indexTarget];
           const remainingTabs = [...col.tabs];
           const [draggedTab] = remainingTabs.splice(indexSource, 1);
+          
+          // Inherit target tab's sectionId when dragging between or within sections
+          const updatedDraggedTab = {
+            ...draggedTab,
+            sectionId: targetTab ? targetTab.sectionId : draggedTab.sectionId,
+          };
           
           const nextTargetIndex = remainingTabs.findIndex((t) => t.id === targetTabId);
           const insertIndex = position === 'before' ? nextTargetIndex : nextTargetIndex + 1;
           
-          remainingTabs.splice(insertIndex, 0, draggedTab);
+          remainingTabs.splice(insertIndex, 0, updatedDraggedTab);
 
           return {
             ...col,
@@ -776,6 +891,11 @@ export default function App() {
         onUpdateTab={handleUpdateTab}
         onRefreshTabTitle={handleRefreshTabTitle}
         onRefreshAllTabTitles={handleRefreshAllTabTitles}
+        onAddSection={handleAddSection}
+        onRenameSection={handleRenameSection}
+        onDeleteSection={handleDeleteSection}
+        onMoveTabToSection={handleMoveTabToSection}
+        onBulkMoveTabsToSection={handleBulkMoveTabsToSection}
       />
 
       {/* Modular Settings & Creation Modal */}

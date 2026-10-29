@@ -5,6 +5,13 @@
 
 export type StatusType = 'Active' | 'Parked' | 'Done';
 
+export interface CollectionSection {
+  id: string;
+  name: string;
+  createdAt: string;
+  order?: number;
+}
+
 export interface Tab {
   id: string;
   collectionId: string;
@@ -14,6 +21,7 @@ export interface Tab {
   addedAt: string; // ISO string
   isCustomTitle?: boolean;
   isLoadingTitle?: boolean;
+  sectionId?: string | null;
 }
 
 export interface Collection {
@@ -27,6 +35,7 @@ export interface Collection {
   createdAt: string; // ISO string
   lastOpenedAt: string; // ISO string
   tabs: Tab[];
+  sections?: CollectionSection[];
   notes?: string;
   notesUpdatedAt?: string;
 }

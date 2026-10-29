@@ -1657,3 +1657,48 @@ html[data-theme="dark"] #collection-notes-card p code {
   border-color: #262938 !important;
   color: #34d399 !important;
 }
+
+/* ========================================================
+   COLLECTION SECTIONS STYLING (DARK MODE)
+   ======================================================== */
+html.dark [id^="section-container-"],
+html[data-theme="dark"] [id^="section-container-"] {
+  background-color: #13141d !important;
+  border-color: #222533 !important;
+}
+
+html.dark [id^="collection-section-header-"],
+html[data-theme="dark"] [id^="collection-section-header-"] {
+  background-color: #181a25 !important;
+  border-color: #222533 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark #create-section-inline-form,
+html[data-theme="dark"] #create-section-inline-form {
+  background-color: #171924 !important;
+  border-color: #252837 !important;
+}
+
+html.dark #new-section-title-input,
+html[data-theme="dark"] #new-section-title-input {
+  background-color: #0f1017 !important;
+  border-color: #2b2e3e !important;
+  color: #ffffff !important;
+}
+
+html.dark #target-section-select,
+html[data-theme="dark"] #target-section-select {
+  background-color: #171924 !important;
+  border-color: #282b3a !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark #tab-move-menu-container,
+html[data-theme="dark"] #tab-move-menu-container,
+html.dark #bulk-move-menu-container > div,
+html[data-theme="dark"] #bulk-move-menu-container > div {
+  background-color: #181924 !important;
+  border-color: #282b3a !important;
+  color: #e2e8f0 !important;
+}

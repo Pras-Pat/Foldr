@@ -6,26 +6,29 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Loader2, ArrowUpRight, Globe, Check } from 'lucide-react';
-import { Tab } from '../types';
+import { Tab, CollectionSection } from '../types';
 import { fetchUrlMetadata, normalizeUrl, getDomainFavicon } from '../utils/urlMetadata';
 import { TabFavicon } from './TabFavicon';
 
 interface TabEditModalProps {
   isOpen: boolean;
   tab: Tab | null;
+  sections?: CollectionSection[];
   onClose: () => void;
-  onSave: (tabId: string, updates: { title: string; url: string; favicon: string }) => void;
+  onSave: (tabId: string, updates: { title: string; url: string; favicon: string; sectionId?: string | null }) => void;
 }
 
 export const TabEditModal: React.FC<TabEditModalProps> = ({
   isOpen,
   tab,
+  sections,
   onClose,
   onSave,
 }) => {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [favicon, setFavicon] = useState('');
+  const [sectionId, setSectionId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchSuccess, setFetchSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -35,6 +38,7 @@ export const TabEditModal: React.FC<TabEditModalProps> = ({
       setTitle(tab.title);
       setUrl(tab.url);
       setFavicon(tab.favicon);
+      setSectionId(tab.sectionId || null);
       setIsFetching(false);
       setFetchSuccess(false);
       setErrorMsg(null);
@@ -94,6 +98,7 @@ export const TabEditModal: React.FC<TabEditModalProps> = ({
       title: title.trim(),
       url: cleanUrl,
       favicon: finalFavicon,
+      sectionId,
     });
     onClose();
   };
@@ -228,6 +233,31 @@ export const TabEditModal: React.FC<TabEditModalProps> = ({
                 </a>
               </div>
             </div>
+
+            {/* Section selector (if collection has sections) */}
+            {sections && sections.length > 0 && (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="tab-edit-section-select"
+                  className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block"
+                >
+                  Section
+                </label>
+                <select
+                  id="tab-edit-section-select"
+                  value={sectionId || ''}
+                  onChange={(e) => setSectionId(e.target.value || null)}
+                  className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-[13px] font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all shadow-2xs"
+                >
+                  <option value="">General / No Section</option>
+                  {sections.map((sec) => (
+                    <option key={sec.id} value={sec.id}>
+                      {sec.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Error Message */}
             {errorMsg && (
