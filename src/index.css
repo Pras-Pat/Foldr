@@ -1702,3 +1702,11 @@ html[data-theme="dark"] #bulk-move-menu-container > div {
   border-color: #282b3a !important;
   color: #e2e8f0 !important;
 }
+
+/* Ensure tab rows never stay washed out after being moved */
+[id^="tab-row-"]:not([draggable="true"]:active) {
+  opacity: 1;
+}
+[id^="tab-row-"] #tab-main-title {
+  opacity: 1 !important;
+}

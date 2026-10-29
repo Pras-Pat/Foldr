@@ -495,13 +495,11 @@ export const MainArea: React.FC<MainAreaProps> = ({
     setDraggedTabId(tabId);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', tabId);
-    e.currentTarget.style.opacity = '0.35';
   };
 
-  const handleTabDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleTabDragEnd = () => {
     setDraggedTabId(null);
     setDropIndicator(null);
-    e.currentTarget.style.opacity = '1';
   };
 
   const handleTabDragOver = (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
@@ -526,6 +524,7 @@ export const MainArea: React.FC<MainAreaProps> = ({
       onReorderTabs(collection.id, sourceTabId, targetTabId, dropIndicator.position);
     }
     setDropIndicator(null);
+    setDraggedTabId(null);
   };
 
   const renderTabRow = (tab: Tab) => {
@@ -542,10 +541,11 @@ export const MainArea: React.FC<MainAreaProps> = ({
         onDragOver={(e) => handleTabDragOver(e, tab.id)}
         onDragLeave={handleTabDragLeave}
         onDrop={(e) => handleTabDrop(e, tab.id)}
+        style={{ opacity: isDragged ? 0.35 : 1 }}
         className={`group relative flex items-center justify-between px-3 py-1.5 rounded-lg border border-transparent hover:bg-gray-50/80 dark:hover:bg-[#1f212c] cursor-grab select-none transition-all ${
           isSelected ? 'bg-gray-50/70 dark:bg-[#1a1c25] shadow-none' : ''
         } ${
-          isDragged ? 'opacity-30 border-dashed border-gray-300' : ''
+          isDragged ? 'border-dashed border-gray-300' : ''
         }`}
       >
         {/* Reorder Drop Indicator Top line */}
@@ -1633,9 +1633,11 @@ export const MainArea: React.FC<MainAreaProps> = ({
                                           onDrop={(e) => {
                                             e.preventDefault();
                                             const sourceTabId = e.dataTransfer.getData('text/plain');
-                                            if (sourceTabId && onMoveTabToSection) {
+                                            if (sourceTabId && onMoveTabToSection && collection) {
                                               onMoveTabToSection(collection.id, sourceTabId, sec.id);
                                             }
+                                            setDropIndicator(null);
+                                            setDraggedTabId(null);
                                           }}
                                           className="py-4 px-3 border border-dashed border-gray-200 dark:border-[#282b36] rounded-lg text-center text-gray-400 text-xs flex items-center justify-center gap-1.5 bg-gray-50/40 dark:bg-[#15161f]/40 my-1 mx-1"
                                         >
